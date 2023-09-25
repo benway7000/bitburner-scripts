@@ -1,0 +1,5 @@
+{
+    "prettier.tabWidth": 2,
+    "prettier.semi": false,
+    "editor.indentSize": "tabSize"
+}
