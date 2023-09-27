@@ -122,6 +122,7 @@ export async function main(ns) {
   // ns.tprint("ns.tFormat: " + ns.tFormat(time))
   // ns.tprint("formatTime: " + formatTime(time))
   // =========================================
+  // ns.tprint(ns.ps("home"))
   // =========================================
   // =========================================
   // =========================================

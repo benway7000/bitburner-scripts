@@ -1,8 +1,8 @@
-const doc = eval('document')
+const doc = eval("document")
 
 /** @param {NS} ns **/
 export async function main(ns) {
-  ns.tprint(GetServerPath(ns, "run4theh111z"));
+  ns.tprint(GetServerPath(ns, "run4theh111z"))
 
   //ns.tprint(HasFormulas(ns));
 
@@ -38,43 +38,43 @@ export async function main(ns) {
 
 // Iterative network scan
 export function GetAllServers(ns) {
-  let servers = ["home"];
+  let servers = ["home"]
   for (const server of servers) {
-    const found = ns.scan(server);
-    if (server != "home") found.splice(0, 1);
-    servers.push(...found);
+    const found = ns.scan(server)
+    if (server != "home") found.splice(0, 1)
+    servers.push(...found)
   }
-  return servers;
+  return servers
 }
 
 // Find the path to a server
 export function GetServerPath(ns, server) {
-  const path = [server];
+  const path = [server]
   while (server != "home") {
-    server = ns.scan(server)[0];
-    path.unshift(server);
+    server = ns.scan(server)[0]
+    path.unshift(server)
   }
-  return path;
+  return path
 }
 
 export function ServerReport(ns, server, metrics = undefined) {
   // Get server object for this server
-  var so = ns.getServer(server);
+  var so = ns.getServer(server)
 
   // weaken threads
   const tweaken = Math.ceil(
     (so.hackDifficulty - so.minDifficulty) / 0.05 /*ns.weakenAnalyze(1, 1)*/
-  );
+  )
   // grow threads
   const tgrow = Math.ceil(
     ns.growthAnalyze(server, so.moneyMax / Math.max(so.moneyAvailable, 1), 1)
-  );
+  )
   // hack threads
-  const thack = Math.ceil(ns.hackAnalyzeThreads(server, so.moneyAvailable));
+  const thack = Math.ceil(ns.hackAnalyzeThreads(server, so.moneyAvailable))
 
-  ns.print("┌─────────────────────────────────────────────────────┐");
-  ns.print("│ " + server.padStart(52 / 2 + server.length / 2).padEnd(52) + "│");
-  ns.print("├─────────────────────────────────────────────────────┤");
+  ns.print("┌─────────────────────────────────────────────────────┐")
+  ns.print("│ " + server.padStart(52 / 2 + server.length / 2).padEnd(52) + "│")
+  ns.print("├─────────────────────────────────────────────────────┤")
   ns.print(
     "│ " +
       (
@@ -87,7 +87,7 @@ export function ServerReport(ns, server, metrics = undefined) {
         "%)"
       ).padEnd(52) +
       "│"
-  );
+  )
   ns.print(
     "│ " +
       (
@@ -99,8 +99,8 @@ export function ServerReport(ns, server, metrics = undefined) {
         so.hackDifficulty.toFixed(2)
       ).padEnd(52) +
       "│"
-  );
-  ns.print("├─────────────────────────────────────────────────────┤");
+  )
+  ns.print("├─────────────────────────────────────────────────────┤")
   if (HasFormulas(ns)) {
     ns.print(
       "│ " +
@@ -112,7 +112,7 @@ export function ServerReport(ns, server, metrics = undefined) {
           ")"
         ).padEnd(52) +
         "│"
-    );
+    )
     ns.print(
       "│ " +
         (
@@ -123,7 +123,7 @@ export function ServerReport(ns, server, metrics = undefined) {
           ")"
         ).padEnd(52) +
         "│"
-    );
+    )
     ns.print(
       "│ " +
         (
@@ -134,14 +134,14 @@ export function ServerReport(ns, server, metrics = undefined) {
           ")"
         ).padEnd(52) +
         "│"
-    );
+    )
   } else {
-    ns.print("│           No Formulas API: Times unknown            │");
+    ns.print("│           No Formulas API: Times unknown            │")
   }
-  ns.print("└─────────────────────────────────────────────────────┘");
+  ns.print("└─────────────────────────────────────────────────────┘")
 
   if (metrics != undefined) {
-    metrics.Report(ns);
+    metrics.Report(ns)
   }
 }
 
@@ -174,10 +174,54 @@ export function FormatTime(time) {
 export async function WaitPids(ns, pids, expectedTime = 0) {
   // first wait for the bulk of time in a single asleep
   await ns.asleep(expectedTime)
-  if (!Array.isArray(pids)) pids = [pids];
+  if (!Array.isArray(pids)) pids = [pids]
   while (pids.some((p) => ns.getRunningScript(p) != undefined)) {
-    await ns.asleep(50);
+    await ns.asleep(50)
   }
+}
+
+/**
+ * Runs a script on home if it is not already running.
+ * @param {*} ns
+ * @param {*} script
+ * 
+ * returns null if script was already running, returns pid if script was exec'ed
+ */
+export function RunHomeSingletonScript(
+  ns,
+  scriptName,
+  threads,
+  params
+) {
+  let server = "home"
+  let pid = ns.getRunningScript(
+    scriptName,
+    server,
+    ...params
+  )
+  if (pid === null) {
+    pid = ns.exec(
+      scriptName,
+      server,
+      threads,
+      ...params
+    )
+    if (pid > 0) {
+      ns.print(
+        "Started script " +
+          scriptName +
+          " on " +
+          server +
+          " with " +
+          threads +
+          " threads"
+      )
+      return pid
+    } else {
+      ns.print("failed to exec")
+    }
+  }
+  return null
 }
 
 export function HasFormulas(ns) {
@@ -192,29 +236,29 @@ export function HasFormulas(ns) {
 
 export function HasTIX(ns) {
   try {
-    ns.stock.getSymbols();
-    return true;
+    ns.stock.getSymbols()
+    return true
   } catch {
-    return false;
+    return false
   }
 }
 
 // Returns the needed XP for the next hacking level
 export function GetNextLevelXp(ns, skill = "hacking") {
-  let player = ns.getPlayer();
+  let player = ns.getPlayer()
   let prevXp = ns.formulas.skills.calculateExp(
     player.skills[skill],
     player.mults[skill]
-  );
+  )
   let nextXp = ns.formulas.skills.calculateExp(
     player.skills[skill] + 1,
     player.mults[skill]
-  );
+  )
 
-  let needed = nextXp - prevXp;
-  let progress = player.exp[skill] - prevXp;
-  let remaining = needed - progress;
-  let pct = (progress / needed) * 100;
+  let needed = nextXp - prevXp
+  let progress = player.exp[skill] - prevXp
+  let remaining = needed - progress
+  let pct = (progress / needed) * 100
 
   // ns.tprint('Progress : ' + ns.nFormat(progress, '0.000a') + ' / ' + ns.nFormat(needed, '0.000a'));
   // ns.tprint('Remaining: ' + ns.nFormat(remaining, '0.000a') + ' (' + pct.toFixed(2) + '%)');
@@ -224,69 +268,69 @@ export function GetNextLevelXp(ns, skill = "hacking") {
     progress: progress,
     remaining: remaining,
     pct: pct,
-  };
+  }
 }
 
 export function LogMessage(ns, message) {
-  let time = new Date().toLocaleTimeString();
-  let date = new Date().toLocaleDateString();
+  let time = new Date().toLocaleTimeString()
+  let date = new Date().toLocaleDateString()
   let log =
-    "[" + date.padStart(10) + " " + time.padStart(11) + "] " + message + "\n";
-  ns.write("nodelog.txt", log, "a");
+    "[" + date.padStart(10) + " " + time.padStart(11) + "] " + message + "\n"
+  ns.write("nodelog.txt", log, "a")
 }
 
 export function GetServerFromSymbol(ns, sym) {
-  if (!HasTIX(ns)) return "N/A";
-  const org = ns.stock.getOrganization(sym);
+  if (!HasTIX(ns)) return "N/A"
+  const org = ns.stock.getOrganization(sym)
   return (
     GetAllServers(ns).find((s) => ns.getServer(s).organizationName == org) ?? ""
-  );
+  )
 }
 
 export function GetSymbolFromServer(ns, server) {
-  if (!HasTIX(ns)) return "N/A";
-  const org = ns.getServer(server).organizationName;
+  if (!HasTIX(ns)) return "N/A"
+  const org = ns.getServer(server).organizationName
   return (
     ns.stock.getSymbols().find((s) => ns.stock.getOrganization(s) == org) ?? ""
-  );
+  )
 }
 
 export function TypeInTerminal(command) {
   try {
-    const terminalInput = eval("document").getElementById("terminal-input");
+    const terminalInput = eval("document").getElementById("terminal-input")
     if (!terminalInput) {
-      ns.toast("!!! You need to be in terminal window !!!", "error");
-      return;
+      ns.toast("!!! You need to be in terminal window !!!", "error")
+      return false
     }
-    terminalInput.value = command;
-    const handler = Object.keys(terminalInput)[1];
-    terminalInput[handler].onChange({ target: terminalInput });
+    terminalInput.value = command
+    const handler = Object.keys(terminalInput)[1]
+    terminalInput[handler].onChange({ target: terminalInput })
     terminalInput[handler].onKeyDown({
       key: "Enter",
       preventDefault: () => null,
-    });
+    })
   } catch {
-    return false;
+    return false
   }
-  return true;
+  return true
 }
 
 export function GetCity() {
   for (const elem of doc.querySelectorAll("p")) {
     if (elem.textContent == "City") {
-      return elem;
+      return elem
     }
   }
 }
 
 export function GetSlums() {
-  return doc.querySelector('[aria-label="The Slums"]');
+  return doc.querySelector('[aria-label="The Slums"]')
 }
 
 export function GetAlphaEnterprises() {
-  return doc.querySelector('[aria-label="Alpha Enterprises"]');
+  return doc.querySelector('[aria-label="Alpha Enterprises"]')
 }
 
 export function GetRothmanUniversity() {
-  return doc.querySelector('[aria-label="Rothman University"]');
+  return doc.querySelector('[aria-label="Rothman University"]')
 }

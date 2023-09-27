@@ -1,4 +1,4 @@
-import { WaitPids, LogMessage } from "scripts/lib/utils"
+import { WaitPids, LogMessage, RunHomeSingletonScript } from "scripts/lib/utils"
 import { GetSitRep } from "scripts/util/sitrep"
 import { GetTopHackServers } from "scripts/lib/metrics-simple"
 
@@ -40,12 +40,13 @@ Brainstorm of what's needed for a "main brain" script
 /** @param {NS} ns **/
 export async function main(ns) {
   ns.disableLog("ALL")
+  ns.enableLog("exec")
 
   let pid = ns.getRunningScript(
     "/scripts/hud/custom-HUD-v2.js",
     "home"
   )
-  if (pid == undefined) {
+  if (pid === null) {
     ns.run("/scripts/hud/custom-HUD-v2.js")
   }
 
@@ -54,6 +55,7 @@ export async function main(ns) {
     await TryRunScript(ns, "/scripts/util/sitrep.js")
     let sitrep = GetSitRep(ns)
     let karma = sitrep.karma
+    RunHomeSingletonScript(ns, "/scripts/autostart/share.js", 1, ["auto"])
 
     // Check if we need to buy more port crackers
     // JEFF FIX TODO
@@ -96,10 +98,10 @@ export async function main(ns) {
       "avmnite-02h",
       "run4theh111z",
       //'w0r1d_d43m0n',
-      'millenium-fitness',
-      'powerhouse-fitness',
-      'crush-fitness',
-      'snap-fitness'
+      // 'millenium-fitness',
+      // 'powerhouse-fitness',
+      // 'crush-fitness',
+      // 'snap-fitness'
     ]
 
     if (
@@ -112,6 +114,11 @@ export async function main(ns) {
     ) {
       // Install backdoors
       await TryRunScript(ns, "/scripts/autostart/backdoor.js", BACKDOOR_TARGETS)
+    }
+
+    // purchase servers, after programs are bought
+    if (sitrep.portCrackers >= 5 && ns.getPurchasedServers().length< ns.getPurchasedServerLimit()) {
+      await TryRunScript(ns, "/scripts/pserv/purchase-server.js")
     }
 
     // Sleeve management
