@@ -11,9 +11,17 @@ export async function main(ns) {
 
 export function GetTopHackServers(ns, count = 10) {
   let servers = GetAllServers(ns)
-  servers.map(server => server.weight = Weight(ns, server.name))
+  servers.map((server) => (server.weight = Weight(ns, server.name)))
 
-  servers = SortServerListByTopHacking(ns, servers)
+  servers = SortServerListByTopHacking(
+    ns,
+    servers.filter(
+      (s) =>
+        ns.hasRootAccess(s.name) &&
+        ns.getServerMaxMoney(s.name) > 0 &&
+        s.weight > 0
+    )
+  )
 
   if (servers.length > count) {
     return servers.slice(0, count)
@@ -24,12 +32,6 @@ export function GetTopHackServers(ns, count = 10) {
 
 export function SortServerListByTopHacking(ns, servers) {
   return servers
-    .filter(
-      (s) =>
-        ns.hasRootAccess(s.name) &&
-        ns.getServerMaxMoney(s.name) > 0 &&
-        s.weight > 0
-    )
     .sort((a, b) => b.weight - a.weight)
     .sort((a, b) => ns.getServerMaxMoney(b.name) - ns.getServerMaxMoney(a.name))
 }

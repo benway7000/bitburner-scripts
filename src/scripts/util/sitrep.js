@@ -40,7 +40,8 @@ export async function main(ns) {
   	report.canHackJoe = ns.formulas.hacking.weakenTime(joes, ns.getPlayer()) >= 120;
   } else {
     // assume if 100% chance to hack, it's not worth doing?
-    report.canHackJoe = ns.hackAnalyzeChance(joes.hostname) < 1
+    // report.canHackJoe = ns.hackAnalyzeChance(joes.hostname) < 1
+    report.canHackJoe = true
   }
 
 	try { report.hasGang = ns.gang.inGang(); } catch { }

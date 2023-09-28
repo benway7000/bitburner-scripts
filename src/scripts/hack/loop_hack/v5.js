@@ -27,7 +27,9 @@ const config = {
     let current_targets_states = []
     for (let server in this.serverStates) {
       let state = this.serverStates[server]
+      // ns.print("getCurrentTargetsStates: server: " + server + " checking promise " + state.promise)
       if (state.promise) {
+        // ns.print("getCurrentTargetsStates: state.prpmise is true")
         current_targets_states.push(state)
       }
     }
@@ -36,7 +38,7 @@ const config = {
       ns,
       current_targets_states
     )
-    // ns.print("current_targets is " + current_targets)
+    // ns.print("getCurrentTargetsStates: current_targets_states is " + current_targets_states)
     return current_targets_states
   },
   getCurrentTargets: function (ns) {
@@ -133,7 +135,7 @@ async function MainLoop(ns, num_start_targets, pct, mode) {
       StartNewExploit(ns, JOESGUNS, pct, mode == "xp")
       // add more targets
       if (num_start_targets > 0) AddTarget(ns, num_start_targets, pct, mode)
-    } else {
+    } else if (mode != "xp") {
       // adjust
       let adjustment = config.targetAdjust
       if (adjustment >= 1) {
@@ -163,6 +165,7 @@ async function StartNewExploit(ns, target, pct, xpMode) {
       ns.print("StartNewExploit err:" + err)
     }
   )
+  // ns.print("StartNewExploit: setting server:" + target + " state. promise == " + promise)
   setServerState(target, "promise", promise)
   return promise
 }
@@ -189,10 +192,11 @@ function SetAdjustRemoveTarget(ns) {
 
 function AddTarget(ns, num_new_targets = 1, pct, mode) {
   let current_targets = config.getCurrentTargets(ns)
+  // ns.print("AddTarget: current_targets is " + current_targets)
   let new_targets = GetNextExploitTargets(ns, num_new_targets, current_targets)
   new_targets.forEach((new_target) => {
     if (!current_targets.includes(new_target)) {
-      ns.print("MainLoop: starting new promise for server " + new_target.name)
+      ns.print("AddTarget: starting new promise for server " + new_target.name)
       setServerState(new_target.name, "fullGrowth", null)
       setServerState(new_target.name, "weight", new_target.weight)
       StartNewExploit(ns, new_target.name, pct, mode == "xp")
@@ -208,8 +212,12 @@ function RemoveTarget(ns) {
   if (current_targets.length > 1) {
     // keep the best fullGrowth == false
     let target_to_stop = current_targets.slice(-1)
-    ns.print("MainLoop: removing target (set flag to stop it): " + target_to_stop)
-    setServerState(target_to_stop, "stop", true)
+    if (getServerState(target_to_stop, "stop") != true) {
+      ns.print(
+        "RemoveTarget: removing target (set flag to stop it): " + target_to_stop
+      )
+      setServerState(target_to_stop, "stop", true)
+    }
   }
 }
 
@@ -350,12 +358,15 @@ async function Exploit(ns, target, pct, xpMode, resolve) {
     [target],
     MAX_PIDS - config.current_pids
   ))
-  config.current_pids += pids.length
-  await WaitPids(ns, pids, expectedDuration)
-  config.current_pids -= pids.length
-  ns.print(endMessage)
-
-  if (phase === "hack") setServerState(target, "hasHacked", true)
+  if (pids.length > 0) {
+    config.current_pids += pids.length
+    await WaitPids(ns, pids, expectedDuration)
+    config.current_pids -= pids.length
+    ns.print(endMessage)
+    if (phase === "hack") setServerState(target, "hasHacked", true)
+  } else {
+    await WaitPids(ns, pids, expectedDuration)
+  }
 
   let result = { target, phase, fired, threads, grow_mem_report }
   for (let key in result) {
