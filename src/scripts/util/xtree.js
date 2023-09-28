@@ -186,7 +186,7 @@ export async function main(ns) {
 
     let hackable = so.moneyMax > 0 && so.hasAdminRights
     let hacking = hack_report.currentTargets.includes(server.name)
-      ? hack_report.serverStates[server.name].phase.toUpperCase()[0] +
+      ? hack_report.serverStates[server.name]?.phase?.toUpperCase()[0] +
         " " +
         FormatTime(hack_report.serverStates[server.name].expectedDuration) +
 		" (" +

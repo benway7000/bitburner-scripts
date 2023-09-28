@@ -1,3 +1,13 @@
+# TODO
+
+- Batch HGW scripts
+X always? hit joesguns for hacking exp
+- Infiltration scripts
+- Contract solving
+- fix backdoor, wait for ||| to be gone?
+- Singularity options in scripts
+
+
 # Typescript template for Bitburner's Remote File API
 
 The official template for synchronizing Typescript/Javascript from your computer to the game.

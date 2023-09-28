@@ -1,5 +1,7 @@
 import { TypeInTerminal } from "scripts/lib/utils"
 
+const doc = eval("document")
+
 /** @param {NS} ns */
 export async function main(ns) {
   ns.disableLog("scan")
@@ -36,7 +38,7 @@ export async function main(ns) {
       let result = TypeInTerminal(routeCommands)
       await ns.sleep(500)
       result = TypeInTerminal("backdoor")
-      await ns.sleep(5 * 1000)
+      await WaitForBackdoor(ns)
       let result2 = TypeInTerminal("home")
       if (!result || !result2) {
         ns.print(
@@ -45,6 +47,19 @@ export async function main(ns) {
       }
       break
     }
+  }
+}
+
+async function WaitForBackdoor(ns) {
+  await ns.asleep(5 * 1000)
+  try {
+    let lastLineText = doc.getElementById("terminal").children[doc.getElementById("terminal").children.length - 1].getElementsByTagName("span")[0].innerHTML
+    while (lastLineText.includes("||")) {
+      lastLineText = doc.getElementById("terminal").children[doc.getElementById("terminal").children.length - 1].getElementsByTagName("span")[0].innerHTML
+      await ns.asleep(5 * 1000)
+    }
+  } catch(e) {
+    
   }
 }
 
