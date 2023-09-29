@@ -124,9 +124,22 @@ export async function main(ns) {
   // =========================================
   // ns.tprint(ns.ps("home"))
   // =========================================
+  // ns.tprint(ns.singularity.getUpgradeHomeRamCost())
   // =========================================
+  // ns.tprint(ns.getPlayer().skills.hacking)
   // =========================================
+  // let list = ["foo", "bar", "baz"]
+  // ns.tprint(list.slice(-1)) // [baz]
+  // ns.tprint(list.slice(-2)) // [bar, baz]
+  // ns.tprint(list.slice(-2, -1)) // [bar]
   // =========================================
+  let current_targets = [
+    "silver-helix",
+    "phantasy",
+    "joesguns"
+  ]
+  current_targets = current_targets.filter(t => t != "joesguns")
+  ns.tprint(current_targets)
   // =========================================
   // =========================================
   // =========================================

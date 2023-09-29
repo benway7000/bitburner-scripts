@@ -118,7 +118,7 @@ export async function main(ns) {
 
   // Open the tail window when the script starts
   // ns.tail();
-  let num_start_targets = 0
+  let num_start_targets = 1
   if (mode === "hack") {
     const ram = new MemoryMap(ns, true)
     num_start_targets = Math.min(Math.max(ram.total / 2000, 2), 5) // assume 2 TB per target.  keep between 2 and 5.
@@ -131,18 +131,19 @@ async function MainLoop(ns, num_start_targets, pct, mode) {
   while (true) {
     if (config.getCurrentTargets(ns).length == 0) {
       // just starting
-      // start joes
-      StartNewExploit(ns, JOESGUNS, pct, mode == "xp")
+      // start joes in xp mode
+      StartNewExploit(ns, JOESGUNS, pct)
       // add more targets
-      if (num_start_targets > 0) AddTarget(ns, num_start_targets, pct, mode)
-    } else if (mode != "xp") {
+      if (num_start_targets > 0) AddTarget(ns, num_start_targets, pct)
+    } else {
       // adjust
       let adjustment = config.targetAdjust
-      if (adjustment >= 1) {
-        AddTarget(ns, adjustment, pct, mode)
+      if (adjustment > 0) {
+        AddTarget(ns, adjustment, pct)
       } else if (adjustment < 0) {
         RemoveTarget(ns)
       }
+      config.targetAdjust = 0
     }
 
     ns.write(
@@ -154,12 +155,12 @@ async function MainLoop(ns, num_start_targets, pct, mode) {
   }
 }
 
-async function StartNewExploit(ns, target, pct, xpMode) {
+async function StartNewExploit(ns, target, pct) {
   let promise = new Promise((resolve, reject) => {
-    Exploit(ns, target, pct, xpMode, resolve)
+    Exploit(ns, target, pct, resolve)
   }).then(
     (val) => {
-      return ExploitCallback(ns, target, pct, xpMode, val)
+      return ExploitCallback(ns, target, pct, val)
     },
     (err) => {
       ns.print("StartNewExploit err:" + err)
@@ -190,7 +191,7 @@ function SetAdjustRemoveTarget(ns) {
   }
 }
 
-function AddTarget(ns, num_new_targets = 1, pct, mode) {
+function AddTarget(ns, num_new_targets = 1, pct) {
   let current_targets = config.getCurrentTargets(ns)
   // ns.print("AddTarget: current_targets is " + current_targets)
   let new_targets = GetNextExploitTargets(ns, num_new_targets, current_targets)
@@ -199,7 +200,7 @@ function AddTarget(ns, num_new_targets = 1, pct, mode) {
       ns.print("AddTarget: starting new promise for server " + new_target.name)
       setServerState(new_target.name, "fullGrowth", null)
       setServerState(new_target.name, "weight", new_target.weight)
-      StartNewExploit(ns, new_target.name, pct, mode == "xp")
+      StartNewExploit(ns, new_target.name, pct)
     }
   })
 }
@@ -207,11 +208,12 @@ function AddTarget(ns, num_new_targets = 1, pct, mode) {
 function RemoveTarget(ns) {
   let current_targets = config.getCurrentTargets(ns)
   // don't stop joes
-  current_targets.filter((t) => t === JOESGUNS)
+  current_targets = current_targets.filter(t => t != JOESGUNS)
   // don't remove last target
+  // TODO: logic to switch to better target (ie hack skill improved a lot)
   if (current_targets.length > 1) {
-    // keep the best fullGrowth == false
-    let target_to_stop = current_targets.slice(-1)
+    // TODO: keep the best fullGrowth == false
+    let target_to_stop = current_targets.slice(-1)[0]
     if (getServerState(target_to_stop, "stop") != true) {
       ns.print(
         "RemoveTarget: removing target (set flag to stop it): " + target_to_stop
@@ -221,7 +223,7 @@ function RemoveTarget(ns) {
   }
 }
 
-async function ExploitCallback(ns, target, pct, xpMode, result) {
+async function ExploitCallback(ns, target, pct, result) {
   if (getServerState(target, "stop")) {
     ns.print("server " + target + " received flag to stop")
     setServerState(target, "promise", null)
@@ -237,27 +239,43 @@ async function ExploitCallback(ns, target, pct, xpMode, result) {
     }
   } else if (
     result.phase == "grow" &&
-    result.threads != Infinity &&
+    result.xpPct == 0 &&
     result.fired != result.threads
   ) {
-    // Infinity is used in xpMode; do not reduce
     // could not fire all the desired threads, should reduce
     setServerState(target, "fullGrowth", false)
-    ns.print(result.target + ": rm_target")
+    ns.print(result.target + ": rm_target. fired == " + result.fired + ". threads == " + result.threads)
     SetAdjustRemoveTarget(ns)
   }
-  return StartNewExploit(ns, target, pct, xpMode)
+  return StartNewExploit(ns, target, pct)
 }
 
-async function Exploit(ns, target, pct, xpMode, resolve) {
-  if (xpMode) target = "joesguns"
-
+async function Exploit(ns, target, pct, resolve) {
+  // if (xpMode) target = "joesguns"
+  let xpPct = 0
   let phase = "unknown"
   let pids = [],
     fired = 0,
     threads = 0,
-    grow_mem_report = {},
     expectedDuration = 0
+
+  if (target === JOESGUNS) {
+    let current_hack_skill = ns.getPlayer().skills.hacking
+    let last_hack_skill = getServerState(JOESGUNS, "last_hack_skill")
+    if (
+      last_hack_skill == undefined ||
+      last_hack_skill + 1 < current_hack_skill
+    ) {
+      xpPct = 0.5
+    } else {
+      // only gained 0 or 1 skill - not worth doing a lot of xp mode?
+      // ns.print(
+      //   "last_hack_skill and current_hack_skill are within 1, slowing xp to 0.1"
+      // )
+      xpPct = 0.1
+    }
+    setServerState(JOESGUNS, "last_hack_skill", current_hack_skill)
+  }
 
   const {
     weakenThreads,
@@ -267,24 +285,26 @@ async function Exploit(ns, target, pct, xpMode, resolve) {
     maxMoney,
     sec,
     minSec,
-  } = CalcExploitThreadsMoneySec(ns, target, pct, xpMode)
+  } = CalcExploitThreadsMoneySec(ns, target, pct, xpPct)
 
-  ExploitReport(
-    ns,
-    target,
-    weakenThreads,
-    growThreads,
-    hackThreads,
-    money,
-    maxMoney,
-    sec,
-    minSec
-  )
+  if (!xpPct) {
+    ExploitReport(
+      ns,
+      target,
+      weakenThreads,
+      growThreads,
+      hackThreads,
+      money,
+      maxMoney,
+      sec,
+      minSec
+    )
+  }
 
   let startMessage = "",
     endMessage = ""
   // Check if security is above minimum
-  if ((xpMode || sec > minSec + MAX_SECURITY_DRIFT) && weakenThreads > 0) {
+  if ((xpPct || sec > minSec + MAX_SECURITY_DRIFT) && weakenThreads > 0) {
     // We need to lower security
     startMessage =
       "WARN:" +
@@ -305,7 +325,7 @@ async function Exploit(ns, target, pct, xpMode, resolve) {
       pids
   } else if (
     (money < maxMoney - maxMoney * MAX_MONEY_DRIFT_PCT && growThreads > 0) ||
-    xpMode
+    xpPct
   ) {
     // We need to grow the server
     startMessage =
@@ -347,7 +367,7 @@ async function Exploit(ns, target, pct, xpMode, resolve) {
   }
 
   // do the actions
-  ns.print(startMessage)
+  if (!xpPct) ns.print(startMessage)
   setServerState(target, "phase", phase)
   setServerState(target, "expectedDuration", expectedDuration)
   setServerState(target, "expectedTime", Date.now() + expectedDuration)
@@ -362,13 +382,17 @@ async function Exploit(ns, target, pct, xpMode, resolve) {
     config.current_pids += pids.length
     await WaitPids(ns, pids, expectedDuration)
     config.current_pids -= pids.length
-    ns.print(endMessage)
+    if (!xpPct) {
+      ns.print(endMessage)
+    } else {
+      ns.print("INFO:" + target + ":" + phase + ":xpPct == " + xpPct)
+    }
     if (phase === "hack") setServerState(target, "hasHacked", true)
   } else {
     await WaitPids(ns, pids, expectedDuration)
   }
 
-  let result = { target, phase, fired, threads, grow_mem_report }
+  let result = { target, phase, fired, threads, xpPct }
   for (let key in result) {
     if (key != "target") {
       setServerState(target, key, result[key])
@@ -424,7 +448,7 @@ function ExploitReport(
       startWall +
       serverString.padEnd(20) +
       spacer +
-      secString.padEnd(16) +
+      secString.padEnd(20) +
       endWall
   )
 
@@ -477,7 +501,7 @@ function centerString(string, desiredWidth) {
     .padEnd(desiredWidth)
 }
 
-function CalcExploitThreadsMoneySec(ns, server, pct, xpMode) {
+function CalcExploitThreadsMoneySec(ns, server, pct, xpPct = 0.5) {
   // Security
   const minSec = ns.getServerMinSecurityLevel(server)
   const sec = ns.getServerSecurityLevel(server)
@@ -494,9 +518,17 @@ function CalcExploitThreadsMoneySec(ns, server, pct, xpMode) {
   // Hacking (limited by pct)
   let hackThreads = Math.floor(ns.hackAnalyzeThreads(server, money * pct))
 
-  if (xpMode) {
-    if (weakenThreads > 0) weakenThreads = Infinity
-    growThreads = Infinity
+  if (xpPct > 0) {
+    const ram = new MemoryMap(ns, true)
+    let scriptRam
+    if (weakenThreads > 0) {
+      scriptRam = ns.getScriptRam(SCRIPT_NAME + "weaken" + ".js")
+      weakenThreads = Math.ceil((ram.total * xpPct) / scriptRam)
+      // weakenThreads = Infinity
+    }
+    scriptRam = ns.getScriptRam(SCRIPT_NAME + "grow" + ".js")
+    growThreads = Math.ceil((ram.total * xpPct) / scriptRam)
+    // growThreads = Infinity
     hackThreads = 0
   }
 
