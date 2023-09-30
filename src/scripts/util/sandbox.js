@@ -1,5 +1,5 @@
 import { GetTopHackServers } from "scripts/lib/metrics-simple"
-import { formatTime } from "scripts/lib/utils"
+import { FormatTime } from "scripts/lib/utils"
 
 const state = {
   stop: false,
@@ -23,8 +23,8 @@ export async function main(ns) {
   //     "2**" + i + " (" +
   //       ns.formatRam(2 ** i) +
   //       ") == $" +
-  //       ns.formatNumber(ns.getPurchasedServerCost(2 ** i) + 
-  //       ".  $ / GB == " + ns.getPurchasedServerCost(2 ** i)/(2**i)) 
+  //       ns.formatNumber(ns.getPurchasedServerCost(2 ** i) +
+  //       ".  $ / GB == " + ns.getPurchasedServerCost(2 ** i)/(2**i))
   //   )
   // }
   // =========================================
@@ -133,14 +133,16 @@ export async function main(ns) {
   // ns.tprint(list.slice(-2)) // [bar, baz]
   // ns.tprint(list.slice(-2, -1)) // [bar]
   // =========================================
-  let current_targets = [
-    "silver-helix",
-    "phantasy",
-    "joesguns"
-  ]
-  current_targets = current_targets.filter(t => t != "joesguns")
-  ns.tprint(current_targets)
+  // let current_targets = [
+  //   "silver-helix",
+  //   "phantasy",
+  //   "joesguns"
+  // ]
+  // current_targets = current_targets.filter(t => t != "joesguns")
+  // ns.tprint(current_targets)
   // =========================================
+  // const programs = ns.singularity.getDarkwebPrograms()
+  // ns.tprint(`Available programs are: ${programs.join(", ")}`)
   // =========================================
   // =========================================
   // =========================================

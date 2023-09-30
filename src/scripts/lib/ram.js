@@ -419,6 +419,7 @@ export function RunScript(
         )
       }
 
+      // ns.enableLog("exec")
       let pid = ns.exec(
         scriptName,
         server,
@@ -438,7 +439,7 @@ export function RunScript(
         )
         pids.push(pid)
         fired += maxThreads
-        if (pids.length >= maxSpread) {
+        if (maxSpread > 0 && pids.length >= maxSpread) {
           if (fired < threads) {
             ns.print(
               "Maximum spread reached, fired " +

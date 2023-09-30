@@ -200,6 +200,7 @@ function AddTarget(ns, num_new_targets = 1, pct) {
       ns.print("AddTarget: starting new promise for server " + new_target.name)
       setServerState(new_target.name, "fullGrowth", null)
       setServerState(new_target.name, "weight", new_target.weight)
+      setServerState(new_target.name, "stop", false)
       StartNewExploit(ns, new_target.name, pct)
     }
   })

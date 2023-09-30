@@ -1,9 +1,4 @@
-import {
-  pctColor,
-  PrintTable,
-  DefaultStyle,
-  ColorPrint,
-} from "scripts/lib/tables"
+import { pctColor, PrintTable, DefaultStyle, ColorPrint } from "scripts/lib/tables"
 import { GetSymbolFromServer, HasFormulas, FormatTime } from "scripts/lib/utils"
 
 const FORCED_HACK_LEVEL = undefined
@@ -36,15 +31,10 @@ function Weight(ns, server) {
     // We use weakenTime instead of minDifficulty since we got access to it,
     // and we add hackChance to the mix (pre-formulas.exe hack chance formula is based on current security, which is useless)
     weight =
-      (so.moneyMax / ns.formulas.hacking.weakenTime(so, player)) *
-      ns.formulas.hacking.hackChance(so, player)
+      (so.moneyMax / ns.formulas.hacking.weakenTime(so, player)) * ns.formulas.hacking.hackChance(so, player)
   }
   // If we do not have formulas, we can't properly factor in hackchance, so we lower the hacking level tolerance by half
-  else if (
-    so.requiredHackingSkill > player.skills.hacking / 2 &&
-    server != "n00dles"
-  )
-    return 0
+  else if (so.requiredHackingSkill > player.skills.hacking / 2 && server != "n00dles") return 0
 
   return weight
 }
@@ -58,15 +48,11 @@ export async function main(ns) {
   let servers = GetAllServers(ns)
   if (hackingOnly) {
     servers = servers
-      .filter(
-        (s) => ns.hasRootAccess(s.name) && ns.getServerMaxMoney(s.name) > 0
-      )
+      .filter((s) => ns.hasRootAccess(s.name) && ns.getServerMaxMoney(s.name) > 0)
       .sort(
         (a, b) =>
           ns.getServerMaxMoney(b.name) -
-          ns.getServerMaxMoney(
-            a.name
-          ) /*Weight(ns, b.name) - Weight(ns, a.name)*/
+          ns.getServerMaxMoney(a.name) /*Weight(ns, b.name) - Weight(ns, a.name)*/
       )
   }
 
@@ -75,9 +61,7 @@ export async function main(ns) {
   const columns = [
     {
       header: " Servers",
-      width: hackingOnly
-        ? Math.max(...servers.map((s) => s.name.length)) + 2
-        : 48,
+      width: hackingOnly ? Math.max(...servers.map((s) => s.name.length)) + 2 : 48,
     },
     { header: " Sym", width: 6 },
     { header: " Ram", width: 23 },
@@ -111,8 +95,7 @@ export async function main(ns) {
   for (let i = 0; i < servers.length; i++) {
     const server = servers[i]
     let depth = server.route.length - 1
-    let nextDepth =
-      i >= servers.length - 1 ? -1 : servers[i + 1].route.length - 1
+    let nextDepth = i >= servers.length - 1 ? -1 : servers[i + 1].route.length - 1
     let lastRootChild = lastChildAtDepth(servers, i, depth)
     let prefix = ""
 
@@ -120,21 +103,18 @@ export async function main(ns) {
       if (nextDepth >= depth && j == depth) {
         if (i == lastRootChild) prefix += "└".padEnd(spacer + 1, "─")
         else prefix += "├".padEnd(spacer + 1, "─")
-      } else if (nextDepth < depth && j == depth)
-        prefix += "└".padEnd(spacer + 1, "─")
+      } else if (nextDepth < depth && j == depth) prefix += "└".padEnd(spacer + 1, "─")
       else if (i == servers.length - 1 && i != lastChildAtDepth(servers, i, j))
         prefix += "└".padEnd(spacer + 1, "─")
       else if (j == depth) prefix += "│".padEnd(spacer + 1, " ")
-      else if (i != lastChildAtDepth(servers, i, j))
-        prefix += "│".padEnd(spacer + 1, " ")
+      else if (i != lastChildAtDepth(servers, i, j)) prefix += "│".padEnd(spacer + 1, " ")
       else prefix += "  "
     }
 
     let maxRam = ns.getServerMaxRam(server.name)
     let ramString = maxRam > 0 ? ns.formatRam(maxRam) : ""
 
-    let freeRam =
-      ns.getServerMaxRam(server.name) - ns.getServerUsedRam(server.name)
+    let freeRam = ns.getServerMaxRam(server.name) - ns.getServerUsedRam(server.name)
     let freeRamColor = freeRam > 0 ? "white" : "Grey"
     let freeRamString = maxRam > 0 ? ns.formatRam(freeRam) : ""
 
@@ -145,15 +125,12 @@ export async function main(ns) {
     let money = ns.getServerMoneyAvailable(server.name)
     let moneyMax = ns.getServerMaxMoney(server.name)
 
-    let moneyPct =
-      moneyMax > 0 ? ((money / moneyMax) * 100).toFixed(0) + "%" : ""
+    let moneyPct = moneyMax > 0 ? ((money / moneyMax) * 100).toFixed(0) + "%" : ""
 
-    let moneyString =
-      moneyMax > 0 ? ns.formatNumber(money, 2).padStart(8) : "".padStart(8)
+    let moneyString = moneyMax > 0 ? ns.formatNumber(money, 2).padStart(8) : "".padStart(8)
     let moneyColor = pctColor(money / moneyMax)
 
-    let maxMoneyString =
-      moneyMax > 0 ? ns.formatNumber(moneyMax, 2).padStart(8) : "".padStart(8)
+    let maxMoneyString = moneyMax > 0 ? ns.formatNumber(moneyMax, 2).padStart(8) : "".padStart(8)
 
     let so = ns.getServer(server.name)
     let sec = so.hackDifficulty
@@ -162,14 +139,10 @@ export async function main(ns) {
     let secColor = pctColor(1 - secPct)
 
     let cso = ns.getServer(server.name)
-    let prepped =
-      so.hackDifficulty == so.minDifficulty &&
-      so.moneyAvailable == so.moneyMax &&
-      so.moneyMax > 0
+    let prepped = so.hackDifficulty == so.minDifficulty && so.moneyAvailable == so.moneyMax && so.moneyMax > 0
     cso.hackDifficulty = cso.minDifficulty
     let player = ns.getPlayer()
-    if (FORCED_HACK_LEVEL != undefined)
-      player.skills.hacking = FORCED_HACK_LEVEL
+    if (FORCED_HACK_LEVEL != undefined) player.skills.hacking = FORCED_HACK_LEVEL
 
     ns.print(cso)
 
@@ -178,27 +151,30 @@ export async function main(ns) {
     let weakTime = GetWeakenTime(ns, cso, player)
 
     let hackReqColor = "lime"
-    if (so.requiredHackingSkill <= player.skills.hacking / 2)
-      hackReqColor = "lime"
-    else if (so.requiredHackingSkill < player.skills.hacking / 2)
-      hackReqColor = "orange"
+    if (so.requiredHackingSkill <= player.skills.hacking / 2) hackReqColor = "lime"
+    else if (so.requiredHackingSkill < player.skills.hacking / 2) hackReqColor = "orange"
     else hackReqColor = "red"
 
     let hackable = so.moneyMax > 0 && so.hasAdminRights
-    let hacking = hack_report.currentTargets.includes(server.name)
-      ? hack_report.serverStates[server.name]?.phase?.toUpperCase()[0] +
-        " " +
-        FormatTime(hack_report.serverStates[server.name].expectedDuration) +
-		" (" +
-		FormatTime(hack_report.serverStates[server.name].expectedTime - Date.now()) +
-		")"
-      : ""
+    let hacking = ""
+    if (hack_report.currentTargets.includes(server.name)) {
+      // loop hack results have a phase
+      if (hack_report.serverStates[server.name]?.phase) {
+        hacking = `${hack_report.serverStates[server.name].phase.toUpperCase()[0]} ${FormatTime(
+          hack_report.serverStates[server.name].expectedDuration
+        )} (${FormatTime(hack_report.serverStates[server.name].expectedTime - Date.now())})`
+      } else if (hack_report.serverStates[server.name]?.cycles) {
+        // batch hack results have cycles
+        let cycles = hack_report.serverStates[server.name]?.cycles
+        cycles = cycles.filter(c => !["complete", "stopped"].includes(c.cycle_state))
+        if (cycles.length > 0) {
+          hacking = `${cycles.length}C. (${FormatTime(cycles[0].batch.expectedTime - Date.now())})`
+        }
+      } 
+    }
 
     let weight =
-      shortlist.length > 0
-        ? Weight(ns, server.name) /
-          Weight(ns, shortlist[shortlist.length - 1].name)
-        : 0
+      shortlist.length > 0 ? Weight(ns, server.name) / Weight(ns, shortlist[shortlist.length - 1].name) : 0
 
     let sym = GetSymbolFromServer(ns, server.name)
 
@@ -217,19 +193,12 @@ export async function main(ns) {
       },
       {
         color: moneyMax > 0 ? moneyColor : "Grey",
-        text:
-          moneyString +
-          (moneyMax > 0 ? "/" : " ") +
-          maxMoneyString +
-          moneyPct.padStart(5),
+        text: moneyString + (moneyMax > 0 ? "/" : " ") + maxMoneyString + moneyPct.padStart(5),
       },
       hackable
         ? {
             color: secColor,
-            text:
-              moneyMax > 0
-                ? (sec - minSec).toFixed(2).padStart(6)
-                : "".padEnd(6),
+            text: moneyMax > 0 ? (sec - minSec).toFixed(2).padStart(6) : "".padEnd(6),
           }
         : "",
       hackable
@@ -301,15 +270,13 @@ export async function main(ns) {
 
 function GetHackChance(ns, serverObject, player) {
   if (serverObject.hostname.startsWith("hacknet-node")) return 0
-  if (HasFormulas(ns))
-    return ns.formulas.hacking.hackChance(serverObject, player)
+  if (HasFormulas(ns)) return ns.formulas.hacking.hackChance(serverObject, player)
   return ns.hackAnalyzeChance(serverObject.hostname)
 }
 
 function GetWeakenTime(ns, serverObject, player) {
   if (serverObject.hostname.startsWith("hacknet-node")) return 0
-  if (HasFormulas(ns))
-    return ns.formulas.hacking.weakenTime(serverObject, player)
+  if (HasFormulas(ns)) return ns.formulas.hacking.weakenTime(serverObject, player)
   return ns.getWeakenTime(serverObject.hostname)
 }
 
@@ -333,12 +300,7 @@ function lastChildAtDepth(servers, start, depth) {
   return last
 }
 
-export function GetAllServers(
-  ns,
-  root = "home",
-  found = new Array(),
-  route = new Array()
-) {
+export function GetAllServers(ns, root = "home", found = new Array(), route = new Array()) {
   if (!found.find((p) => p.name == root)) {
     let entry = { name: root, route: route }
     entry.route.push(root)
