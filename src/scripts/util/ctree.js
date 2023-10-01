@@ -1,5 +1,6 @@
 import { pctColor, PrintTable, DefaultStyle, ColorPrint } from "scripts/lib/tables"
 import { GetSymbolFromServer, HasFormulas, FormatTime, Weight, PadCenter } from "scripts/lib/utils"
+import { CYCLE_STATES } from "scripts/hack/batch/batch_v2"
 
 const FORCED_HACK_LEVEL = undefined
 
@@ -32,20 +33,24 @@ export async function main(ns) {
 }
 
 function CycleReport(ns, cycle) {
-
-  ns.tprint(`Cycle Report for ${JSON.stringify(cycle)}`)
-  CycleGraph(ns, cycle)
+  // ns.tprint(`Cycle Report for ${JSON.stringify(cycle)}`)
+  if ([CYCLE_STATES.PREP, CYCLE_STATES.BATCH, CYCLE_STATES.CALLBACK].includes(cycle.cycle_state)) {
+    CycleGraph(ns, cycle)
+  }
 }
 
 function CycleGraph(ns, cycle) {
   const {
-    target, cycle_number, isPrep,
     weaken1Threads, weaken1StartTime, weaken1Duration, weaken1EndTime, weaken1SecToRemove,
     weaken2Threads, weaken2StartTime, weaken2Duration, weaken2EndTime, weaken2SecToRemove,
     growThreads, growStartTime, growDuration, growEndTime, growSecurityIncrease,
     hackThreads, hackStartTime, hackDuration, hackEndTime, hackSecurityIncrease, hackMoneyRemoved,
     money, maxMoney, sec, minSec, startingExtraSecurity,
   } = cycle.calc
+
+  const target = cycle.target
+  const cycle_number = cycle.cycle_number
+  const isPrep = cycle.isPrep
 
   const batchPhaseDelay = cycle.batch.batchPhaseDelay
   const overallDuration = weaken1Duration + 2 * batchPhaseDelay
@@ -96,7 +101,8 @@ function CycleGraph(ns, cycle) {
   // line = `${"─".repeat((desiredContentWidth - 6) / 2)} ${isPrep ? "Prep" : "Hack"} ${"─".repeat(
   //   (desiredContentWidth - 6) / 2
   // )}`
-  line = `${PadCenter(` ${isPrep ? 'Prep' : 'Hack'} `, desiredContentWidth, "─")}`
+  let cycle_status = ` ${isPrep ? 'Prep' : 'Hack'}: #${cycle_number}:${cycle.cycle_state} ${FormatTime(overallDuration)}`
+  line = `${PadCenter(cycle_status, desiredContentWidth, "─")}`
   ns.tprint(`${startLine}${startWall}${line}${endWall}`)
 
   // hack line
@@ -104,7 +110,7 @@ function CycleGraph(ns, cycle) {
     line = CalcGraphLine(ns, "H", hackStartTime, hackDuration)
     // line = `${" ".repeat(DurToLen(ns, hackStartTime))}[= H ${"=".repeat(DurToLen(ns, hackDuration) - 6 - 2)}]` // 6 for [= H ]
   } else {
-    line = `${PadCenter("[No Hack]",maxPhaseLength)}`
+    line = `${PadCenter("[No Hack]",maxPhaseLength-3)}`
   }
   ns.tprint(`${startLine}${startWall}${line}   ${endWall}`)
 
@@ -115,7 +121,7 @@ function CycleGraph(ns, cycle) {
     //   DurToLen(ns, weaken1Duration) - 7 - 2
     // )}]` // 7 for [= W1 ]
   } else {
-    line = `${" ".repeat((maxPhaseLength - 9) / 2)}[No W1]${" ".repeat((maxPhaseLength - 9) / 2)}`
+    line = `${PadCenter("[No W1]",maxPhaseLength-2)}`
   }
   ns.tprint(`${startLine}${startWall}${line}  ${endWall}`)
 
@@ -124,7 +130,7 @@ function CycleGraph(ns, cycle) {
     line = CalcGraphLine(ns, "G", growStartTime, growDuration)
     // line = `${" ".repeat(DurToLen(ns, growStartTime))}[= G ${"=".repeat(DurToLen(ns, growDuration) - 6 - 1)}]` // 6 for [= G ]
   } else {
-    line = `${" ".repeat((maxPhaseLength - 9) / 2)}[No Grow]${" ".repeat((maxPhaseLength - 9) / 2)}`
+    line = `${PadCenter("[No Grow]",maxPhaseLength-1)}`
   }
   ns.tprint(`${startLine}${startWall}${line} ${endWall}`)
 

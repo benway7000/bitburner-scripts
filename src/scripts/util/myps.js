@@ -3,13 +3,11 @@ import { GetAllServers } from "scripts/lib/utils.js";
 /** @param {NS} ns */
 export async function main(ns) {
   
-    const [script, cmd] = ns.args
-    
-    if (cmd == undefined) cmd = "list"
+    const [script, cmd = "list"] = ns.args
 
     // Show usage if no parameters were passed
     if (script == undefined) {
-      ns.tprint("ERROR: No mode specified!")
+      ns.tprint("ERROR: No script specified!")
       ns.tprint("INFO : Usage: run ps_util.js <script_regex> <cmd>")
       ns.tprint("INFO :")
       ns.tprint(

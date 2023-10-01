@@ -2,34 +2,44 @@ import { GetTopHackServers, SortServerListByTopHacking } from "scripts/lib/metri
 import { RunScript, MemoryMap } from "scripts/lib/ram"
 import { WaitPids, FormatTime } from "scripts/lib/utils"
 
-const SCRIPT_NAME_PREFIX = "batch_v1"
+const SCRIPT_NAME_PREFIX = "batch_v2"
 const SCRIPT_PATH = "/scripts/hack/batch/" + SCRIPT_NAME_PREFIX
 
 const MAX_SECURITY_DRIFT = 3 // This is how far from minimum security we allow the server to be before weakening
 const MAX_MONEY_DRIFT_PCT = 0.1 // This is how far from 100% money we allow the server to be before growing (1-based percentage)
 const DEFAULT_PCT = 0.5 // This is the default 1-based percentage of money we want to hack from the server in a single pass
 const GROW_THREAD_MULT = 1.2 // extra grow threads to be sure
-const MAX_PIDS = 50 // max number of pids total
+const MAX_ACTIVE_CYCLES = 500
+// const MAX_PIDS = 50 // max number of pids total
 
 const JOESGUNS = "joesguns"
-const CYCLE_STATE_PREP = "prep"
-const CYCLE_STATE_BATCH = "batch"
-const CYCLE_STATE_CALLBACK = "callback"
-const CYCLE_STATE_STOPPED = "stopped"
-const CYCLE_STATE_COMPLETE = "complete"
+export const CYCLE_STATES = {
+  PREP: "prep",
+  BATCH: "batch",
+  CALLBACK: "callback",
+  COMPLETE: "complete",
+}
+// const CYCLE_STATE_PREP = "prep"
+// const CYCLE_STATE_BATCH = "batch"
+// const CYCLE_STATE_CALLBACK = "callback"
+// const CYCLE_STATE_STOPPED = "stopped"
+// const CYCLE_STATE_COMPLETE = "complete"
 
 // https://github.com/xxxsinx/bitburner/blob/main/v1.js
 
 /**
- * Batch_v1
+ * Batch_v2
  * 
- * This is the first pass at a HWGW batch script
+ * Instead of promise chaining, lets try running batches from the main loop.
+ * Maybe this lets us adjust # batches on the fly?
  * 
- * It uses 'promise chaining' to keep running batches
+ * TODO: refactor config into a class that can be used by ctree as well
+ * xp mode
+ * 
  */
 
 const config = {
-  loopDelay: 20 * 1000,
+  loopDelay: 10 * 1000,
   batchPhaseDelay: 500, // time (in ms) between batch phases finishing
   multiCycleDelay: 20 * 1000,
   serverStates: {},
@@ -42,10 +52,11 @@ const config = {
       // ns.print("getCurrentTargetsStates: server: " + server + " checking promise " + state.promise)
       if (
         state.cycles.some((c) =>
-          [CYCLE_STATE_PREP, CYCLE_STATE_BATCH, CYCLE_STATE_CALLBACK].includes(c.cycle_state)
+          [CYCLE_STATES.PREP, CYCLE_STATES.BATCH, CYCLE_STATES.CALLBACK].includes(c.cycle_state)
         )
       ) {
         // ns.print("getCurrentTargetsStates: state.prpmise is true")
+        state.currentActiveCycles = getActiveCyclesCount(server)
         current_targets_states.push(state)
       }
     }
@@ -64,6 +75,7 @@ const config = {
     return {
       loopDelay: this.loopDelay,
       currentTargets: this.getCurrentTargets(ns),
+      currentActiveCycles: getActiveCyclesCount(),
       targetAdjust: this.targetAdjust,
       serverStates: this.serverStates,
     }
@@ -92,7 +104,7 @@ function getServerState(server, key) {
 /**
  *
  * @param {*} server
- * @returns list of cycles, sorted by cycle_number
+ * @returns list of cycles, sorted by cycle_number, highest first
  */
 function getServerCycles(server) {
   if (getServerState(server, "cycles") == undefined) {
@@ -117,10 +129,25 @@ function getServerCycleByNumber(server, cycle_number) {
 function getServerCyclesNextNumber(server) {
   let cycles = getServerCycles(server)
   if (cycles.length > 0) {
-    return cycles.slice(-1)[0].cycle_number + 1
+    return cycles[0].cycle_number + 1
   } else {
     return 1
   }
+}
+
+function getActiveCyclesCount(server = "all") {
+  let cycle_count = 0
+  if (server == "all") {
+    for (let server in config.serverStates) {
+      let state = config.serverStates[server]
+      // ns.print("getCurrentTargetsStates: server: " + server + " checking promise " + state.promise)
+      cycle_count += state.cycles.filter(c => [CYCLE_STATES.PREP, CYCLE_STATES.BATCH].includes(c.cycle_state)).length
+    }
+  } else {
+    // single server
+    cycle_count += getServerCycles(server).filter(c => [CYCLE_STATES.PREP, CYCLE_STATES.BATCH].includes(c.cycle_state)).length
+  }
+  return cycle_count
 }
 
 function clearServerState(server) {
@@ -174,28 +201,32 @@ export async function main(ns) {
 
 async function MainLoop(ns, num_start_targets, pct, mode) {
   while (true) {
-    if (config.getCurrentTargets(ns).length == 0) {
-      // just starting
-      // start joes in xp mode
-      // TODO do joes
-      // StartXpCycleOnTarget(ns, JOESGUNS, pct)
-      // add more targets
-      if (num_start_targets > 0) AddTarget(ns, num_start_targets, pct)
-    } else {
-      // TODO do adjust
-      // // adjust
-      // let adjustment = config.targetAdjust
-      // if (adjustment > 0) {
-      //   AddTarget(ns, 1, pct)
-      // } else if (adjustment < 0) {
-      //   RemoveTarget(ns)
-      // }
-      // config.targetAdjust = 0
+    let ramMap = new MemoryMap(ns)
+    if (ramMap.available > 3000) { // more than 3 TB, launch a new batch
+      let topTarget = GetNextBatchTarget(ns)
+      if (topTarget) {
+        let cycle_count = getActiveCyclesCount(topTarget)
+        let expectedDuration = getServerCycles(topTarget)[0]?.batch?.expectedDuration ?? Infinity
+        let max_cycles_for_server = expectedDuration / config.loopDelay
+        ns.print(`MainLoop: target ${topTarget}, maximum cycle count ${max_cycles_for_server}. expDur ${expectedDuration}`)
+        if (cycle_count >= max_cycles_for_server) {
+          ns.print(`MainLoop: target ${topTarget}, maximum cycle count ${cycle_count} reached. `)
+        } else {
+          ns.print(`MainLoop: launching new batch on ${topTarget}. Active Cycles: ${cycle_count}`)
+          StartFullCycleOnTarget(ns, topTarget, pct)
+        }
+      } else {
+        ns.print(`MainLoop: could not find a new target`)
+      }
     }
 
-    ns.write("/data/hack.txt", JSON.stringify(config.getConfigJSON(ns), null, 2), "w")
+    WriteHackStatus(ns)
     await ns.asleep(config.loopDelay)
   }
+}
+
+function WriteHackStatus(ns) {
+  ns.write("/data/hack.txt", JSON.stringify(config.getConfigJSON(ns), null, 2), "w")
 }
 
 async function PrepServer(ns, target, cycle_number, pct) {
@@ -219,12 +250,13 @@ async function RunBatch(ns, target, cycle_number, pct, isPrep = false) {
   let pids = [],
     fired = 0,
     threads = 0
+  let phase = ""
+  let script_name = ""
+
   ns.print(`RunBatch:${target} cycle:${cycle_number} prep:${isPrep}`)
 
   const calc = CalcBatchTimesThreads(ns, target, cycle_number, pct, isPrep)
-  calc.target = target
-  calc.cycle_number = cycle_number
-  calc.isPrep = isPrep
+  getServerCycleByNumber(target, cycle_number).isPrep = isPrep
 
   // prettier-ignore
   const {
@@ -235,7 +267,7 @@ async function RunBatch(ns, target, cycle_number, pct, isPrep = false) {
     money, maxMoney, sec, minSec, startingExtraSecurity,
   } = calc
   getServerCycleByNumber(target, cycle_number).calc = calc
-  
+
 
   // prettier-ignore
   BatchReport(
@@ -261,44 +293,48 @@ async function RunBatch(ns, target, cycle_number, pct, isPrep = false) {
   getServerCycleByNumber(target, cycle_number).batch = batch
 
   // start weaken1
-  let phase = "weaken1"
-  let script_name = "weaken"
-  threads = weaken1Threads
-  ;({ pids, fired, threads } = RunScript(
-    ns,
-    SCRIPT_NAME_PREFIX + script_name + ".js",
-    threads,
-    [target, phase],
-    -1
-  ))
-  batch.all_pids.weaken1 = [...pids]
+  if (weaken1Threads > 0) {
+    phase = "weaken1"
+    script_name = "weaken"
+    threads = weaken1Threads
+      ; ({ pids, fired, threads } = RunScript(
+        ns,
+        SCRIPT_NAME_PREFIX + script_name + ".js",
+        threads,
+        [target, phase],
+        -1
+      ))
+    batch.all_pids.weaken1 = [...pids]
+  }
 
   // start weaken2
-  await ns.asleep(weaken2StartTime)
-  phase = "weaken2"
-  script_name = "weaken"
-  threads = weaken2Threads
-  ;({ pids, fired, threads } = RunScript(
-    ns,
-    SCRIPT_NAME_PREFIX + script_name + ".js",
-    threads,
-    [target, phase],
-    -1
-  ))
-  batch.all_pids.weaken2 = [...pids]
+  if (weaken2Threads > 0) {
+    await ns.asleep(weaken2StartTime)
+    phase = "weaken2"
+    script_name = "weaken"
+    threads = weaken2Threads
+      ; ({ pids, fired, threads } = RunScript(
+        ns,
+        SCRIPT_NAME_PREFIX + script_name + ".js",
+        threads,
+        [target, phase],
+        -1
+      ))
+    batch.all_pids.weaken2 = [...pids]
+  }
 
   // start grow
   if (growThreads > 0) {
     await ns.asleep(growStartTime - weaken2StartTime)
     phase = script_name = "grow"
     threads = growThreads
-    ;({ pids, fired, threads } = RunScript(
-      ns,
-      SCRIPT_NAME_PREFIX + script_name + ".js",
-      threads,
-      [target, phase],
-      -1
-    ))
+      ; ({ pids, fired, threads } = RunScript(
+        ns,
+        SCRIPT_NAME_PREFIX + script_name + ".js",
+        threads,
+        [target, phase],
+        -1
+      ))
     batch.all_pids.grow = [...pids]
   }
 
@@ -307,13 +343,13 @@ async function RunBatch(ns, target, cycle_number, pct, isPrep = false) {
     await ns.asleep(hackStartTime - growStartTime - weaken2StartTime)
     phase = script_name = "hack"
     threads = hackThreads
-    ;({ pids, fired, threads } = RunScript(
-      ns,
-      SCRIPT_NAME_PREFIX + script_name + ".js",
-      threads,
-      [target, phase],
-      -1
-    ))
+      ; ({ pids, fired, threads } = RunScript(
+        ns,
+        SCRIPT_NAME_PREFIX + script_name + ".js",
+        threads,
+        [target, phase],
+        -1
+      ))
     batch.all_pids.hack = [...pids]
   }
 
@@ -331,6 +367,11 @@ async function RunBatch(ns, target, cycle_number, pct, isPrep = false) {
   batch.all_pids.all = all_pids
   if (batch.all_pids.all.length > 0) {
     await WaitPids(ns, batch.all_pids.all, expectedDuration - config.batchPhaseDelay)
+    batch.result = {
+      endingMoneyShort: ns.getServerMaxMoney(target) - ns.getServerMoneyAvailable(target),
+      endingSecurityExtra: ns.getServerSecurityLevel(target) - ns.getServerMinSecurityLevel(target)
+    }
+    if (batch.result.endingMoneyShort != 0 || batch.result.endingSecurityExtra != 0) batch.result.misCalc = true
   }
   let result = { target, isPrep, batch }
   // for (let key in result) {
@@ -343,111 +384,56 @@ async function RunBatch(ns, target, cycle_number, pct, isPrep = false) {
 }
 
 async function StartFullCycleOnTarget(ns, target, pct, cycle_number = -1) {
-  // let promise = PrepServer(ns, target, pct)
-  //   .then(RunBatch(ns, target, pct))
-  //   .then((result) => FullCycleCallback(ns, target, pct, result))
-  // setServerState(target, "promise", promise)
-  // return promise
   if (cycle_number === -1) cycle_number = getServerCyclesNextNumber(target)
-  getServerCycleByNumber(target, cycle_number).cycle_state = CYCLE_STATE_PREP
-  await PrepServer(ns, target, cycle_number, pct)
-  getServerCycleByNumber(target, cycle_number).cycle_state = CYCLE_STATE_BATCH
-  let batch_result = await RunBatch(ns, target, cycle_number, pct)
-  getServerCycleByNumber(target, cycle_number).cycle_state = CYCLE_STATE_CALLBACK
-  return FullCycleCallback(ns, target, cycle_number, pct, batch_result)
-}
-
-async function FullCycleCallback(ns, target, cycle_number, pct, result) {
-  if (getServerState(target, "stop")) {
-    ns.print("target " + target + " received flag to stop")
-    getServerCycleByNumber(target, cycle_number).cycle_state = CYCLE_STATE_STOPPED
-    return "stopped"
+  if (!IsPrepped(ns, target)) {
+    getServerCycleByNumber(target, cycle_number).cycle_state = CYCLE_STATES.PREP
+    WriteHackStatus(ns)
+    await PrepServer(ns, target, cycle_number, pct)
   }
-
-  // adjust
-  if (result.batch.ram.available > 3000) {
-    setTimeout(() => {
-      StartFullCycleOnTarget(ns, target, pct)
-    }, config.multiCycleDelay)
-  }
-  // or maybe adjust how many batches or something?
-  getServerCycleByNumber(target, cycle_number).cycle_state = CYCLE_STATE_COMPLETE
-  return StartFullCycleOnTarget(ns, target, pct, cycle_number)
+  getServerCycleByNumber(target, cycle_number).cycle_state = CYCLE_STATES.BATCH
+  WriteHackStatus(ns)
+  await RunBatch(ns, target, cycle_number, pct)
+  getServerCycleByNumber(target, cycle_number).cycle_state = CYCLE_STATES.COMPLETE
+  WriteHackStatus(ns)
 }
 
 async function StartXpCycleOnTarget(ns, target, pct) {
-  let promise = PrepServer(ns, target, pct).then((result) => XpCycleCallback(ns, target, pct, result))
-  setServerState(target, "promise", promise)
-  return promise
-}
-
-async function XpCycleCallback(ns, target, pct, result) {
-  if (getServerState(target, "stop")) {
-    ns.print("target " + target + " received flag to stop")
-    setServerState(target, "promise", null)
-    return "stopped"
-  }
-  // TODO: use result to figure out if we should adjust targets
-  // or maybe adjust how many batches or something?
-  return StartXpCycleOnTarget(ns, target, pct)
-}
-
-function SetAdjustAddTarget(ns) {
-  if (
-    !config.getCurrentTargetsStates(ns).some((state) => setServerState(state.server, "fullGrowth") === null)
-  ) {
-    config.targetAdjust++
-  }
-}
-
-function SetAdjustRemoveTarget(ns) {
-  if (
-    !config.getCurrentTargetsStates(ns).some((state) => setServerState(state.server, "fullGrowth") === null)
-  ) {
-    config.targetAdjust--
-  }
-}
-
-function AddTarget(ns, num_new_targets = 1, pct) {
-  let current_targets = config.getCurrentTargets(ns)
-  // ns.print("AddTarget: current_targets is " + current_targets)
-  let new_targets = GetNextExploitTargets(ns, num_new_targets, current_targets)
-  new_targets.forEach((new_target) => {
-    if (!current_targets.includes(new_target)) {
-      ns.print("AddTarget: starting new promise for server " + new_target.name)
-      setServerState(new_target.name, "fullGrowth", null)
-      setServerState(new_target.name, "weight", new_target.weight)
-      StartFullCycleOnTarget(ns, new_target.name, pct)
-    }
-  })
-}
-
-function RemoveTarget(ns) {
-  let current_targets = config.getCurrentTargets(ns)
-  // don't stop joes
-  current_targets = current_targets.filter((t) => t != JOESGUNS)
-  // don't remove last target
-  // TODO: logic to switch to better target (ie hack skill improved a lot)
-  if (current_targets.length > 1) {
-    // TODO: keep the best fullGrowth == false
-    let target_to_stop = current_targets.slice(-1)[0]
-    if (getServerState(target_to_stop, "stop") != true) {
-      ns.print("RemoveTarget: removing target (set flag to stop it): " + target_to_stop)
-      setServerState(target_to_stop, "stop", true)
-    }
-  }
+  if (cycle_number === -1) cycle_number = getServerCyclesNextNumber(target)
+  getServerCycleByNumber(target, cycle_number).cycle_state = CYCLE_STATES.PREP
+  await PrepServer(ns, target, cycle_number, pct)
+  getServerCycleByNumber(target, cycle_number).cycle_state = CYCLE_STATES.COMPLETE
 }
 
 /** returns the next-best target, excluding the passed-in targets */
-function GetNextExploitTargets(ns, num_new_targets, exclude_targets = []) {
-  let top_targets = GetTopHackServers(ns, num_new_targets + exclude_targets.length)
-  let possible_targets = top_targets.filter((t) => !exclude_targets.includes(t.name))
-  // ns.print("possible_targets[0]: " + possible_targets[0].name)
-  if (possible_targets.length > num_new_targets) {
-    return possible_targets.slice(0, num_new_targets)
-  } else {
-    return possible_targets
+function GetNextBatchTarget(ns) {
+  let top_targets = GetTopHackServers(ns, 50)
+
+  // find top target
+  // if prepped, then batch
+  // if not prepped and not prepping, then batch
+  // if not prepped but prepping, go to next target
+  for (let target of top_targets) {
+    if (!IsPrepped(ns, target.name)) {
+      let cycles = getServerCycles(target.name)
+      if (cycles.some(c => c.cycle_state === CYCLE_STATES.PREP)) {
+        continue
+      }
+    }
+    return target.name
   }
+}
+
+function IsPrepped(ns, target) {
+  let money = ns.getServerMoneyAvailable(target)
+  if (money <= 0) money = 1 // division by zero safety
+  const maxMoney = ns.getServerMaxMoney(target)
+  if (maxMoney > money) return false
+
+  // Security
+  const minSec = ns.getServerMinSecurityLevel(target)
+  const sec = ns.getServerSecurityLevel(target)
+  if ((sec - minSec) > 0) return false
+  return true
 }
 
 function BatchReport(
@@ -624,9 +610,6 @@ function CalcBatchTimesThreads(ns, target, cycle_number, hackPct, isPrep) {
   }
 
   let result = {
-    target,
-    cycle_number,
-    isPrep,
     weaken1Threads,
     weaken1StartTime,
     weaken1Duration,
