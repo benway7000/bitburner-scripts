@@ -77,63 +77,63 @@ export function ServerReport(ns, server, metrics = undefined) {
   ns.print("├─────────────────────────────────────────────────────┤")
   ns.print(
     "│ " +
-      (
-        "Money        : $" +
-        ns.formatNumber(so.moneyAvailable, 3) +
-        " / $" +
-        ns.formatNumber(so.moneyMax, 3) +
-        " (" +
-        ((so.moneyAvailable / so.moneyMax) * 100).toFixed(2) +
-        "%)"
-      ).padEnd(52) +
-      "│"
+    (
+      "Money        : $" +
+      ns.formatNumber(so.moneyAvailable, 3) +
+      " / $" +
+      ns.formatNumber(so.moneyMax, 3) +
+      " (" +
+      ((so.moneyAvailable / so.moneyMax) * 100).toFixed(2) +
+      "%)"
+    ).padEnd(52) +
+    "│"
   )
   ns.print(
     "│ " +
-      (
-        "Security     : " +
-        (so.hackDifficulty - so.minDifficulty).toFixed(2) +
-        " min= " +
-        so.minDifficulty.toFixed(2) +
-        " current= " +
-        so.hackDifficulty.toFixed(2)
-      ).padEnd(52) +
-      "│"
+    (
+      "Security     : " +
+      (so.hackDifficulty - so.minDifficulty).toFixed(2) +
+      " min= " +
+      so.minDifficulty.toFixed(2) +
+      " current= " +
+      so.hackDifficulty.toFixed(2)
+    ).padEnd(52) +
+    "│"
   )
   ns.print("├─────────────────────────────────────────────────────┤")
   if (HasFormulas(ns)) {
     ns.print(
       "│ " +
-        (
-          "Weaken time  : " +
-          ns.tFormat(ns.formulas.hacking.hackTime(so, ns.getPlayer()) * 4) +
-          " (t=" +
-          tweaken +
-          ")"
-        ).padEnd(52) +
-        "│"
+      (
+        "Weaken time  : " +
+        ns.tFormat(ns.formulas.hacking.hackTime(so, ns.getPlayer()) * 4) +
+        " (t=" +
+        tweaken +
+        ")"
+      ).padEnd(52) +
+      "│"
     )
     ns.print(
       "│ " +
-        (
-          "Grow         : " +
-          ns.tFormat(ns.formulas.hacking.hackTime(so, ns.getPlayer()) * 3.2) +
-          " (t=" +
-          tgrow +
-          ")"
-        ).padEnd(52) +
-        "│"
+      (
+        "Grow         : " +
+        ns.tFormat(ns.formulas.hacking.hackTime(so, ns.getPlayer()) * 3.2) +
+        " (t=" +
+        tgrow +
+        ")"
+      ).padEnd(52) +
+      "│"
     )
     ns.print(
       "│ " +
-        (
-          "Hack         : " +
-          ns.tFormat(ns.formulas.hacking.hackTime(so, ns.getPlayer())) +
-          " (t=" +
-          thack +
-          ")"
-        ).padEnd(52) +
-        "│"
+      (
+        "Hack         : " +
+        ns.tFormat(ns.formulas.hacking.hackTime(so, ns.getPlayer())) +
+        " (t=" +
+        thack +
+        ")"
+      ).padEnd(52) +
+      "│"
     )
   } else {
     ns.print("│           No Formulas API: Times unknown            │")
@@ -143,6 +143,42 @@ export function ServerReport(ns, server, metrics = undefined) {
   if (metrics != undefined) {
     metrics.Report(ns)
   }
+}
+
+// Returns a weight that can be used to sort servers by hack desirability
+export function Weight(ns, server, FORCED_HACK_LEVEL = undefined) {
+  if (!server) return 0
+
+  // Don't ask, endgame stuff
+  if (server.startsWith("hacknet-node")) return 0
+
+  // Get the player information
+  let player = ns.getPlayer()
+  if (FORCED_HACK_LEVEL != undefined) player.skills.hacking = FORCED_HACK_LEVEL
+
+  // Get the server information
+  let so = ns.getServer(server)
+
+  // Set security to minimum on the server object (for Formula.exe functions)
+  so.hackDifficulty = so.minDifficulty
+
+  // We cannot hack a server that has more than our hacking skill so these have no value
+  if (so.requiredHackingSkill > player.skills.hacking) return 0
+
+  // Default pre-Formulas.exe weight. minDifficulty directly affects times, so it substitutes for min security times
+  let weight = so.moneyMax / so.minDifficulty
+
+  // If we have formulas, we can refine the weight calculation
+  if (HasFormulas(ns)) {
+    // We use weakenTime instead of minDifficulty since we got access to it,
+    // and we add hackChance to the mix (pre-formulas.exe hack chance formula is based on current security, which is useless)
+    weight =
+      (so.moneyMax / ns.formulas.hacking.weakenTime(so, player)) * ns.formulas.hacking.hackChance(so, player)
+  }
+  // If we do not have formulas, we can't properly factor in hackchance, so we lower the hacking level tolerance by half
+  else if (so.requiredHackingSkill > player.skills.hacking / 2 && server != "n00dles") return 0
+
+  return weight
 }
 
 // export function FormatMoney(ns, value, decimals = 3) {
@@ -169,6 +205,11 @@ export function FormatTime(time) {
     (minutes > 0 ? minutes.toFixed(0).padStart(2, "0") + ":" : "00:") +
     (seconds > 0 ? seconds.toFixed(0).padStart(2, "0") : "00")
   )
+}
+
+// Centers text in a padded string of "length" long
+export function PadCenter(str, length, padChar = " ") {
+  return str.padStart((length + str.length) / 2, padChar).padEnd(length, padChar)
 }
 
 export async function WaitPids(ns, pids, expectedTime = 0) {
@@ -209,12 +250,12 @@ export function RunHomeSingletonScript(
     if (pid > 0) {
       ns.print(
         "Started script " +
-          scriptName +
-          " on " +
-          server +
-          " with " +
-          threads +
-          " threads"
+        scriptName +
+        " on " +
+        server +
+        " with " +
+        threads +
+        " threads"
       )
       return pid
     } else {

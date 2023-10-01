@@ -101,7 +101,7 @@ function getServerCycleByNumber(server, cycle_number) {
     }
   }
   // not found, init a new one
-  let new_cycle = { cycle_number }
+  let new_cycle = { target: server, cycle_number }
   cycles.push(new_cycle)
   return new_cycle
 }
@@ -213,18 +213,25 @@ async function RunBatch(ns, target, cycle_number, pct, isPrep = false) {
     threads = 0
   ns.print(`RunBatch:${target} cycle:${cycle_number} prep:${isPrep}`)
 
+  const calc = CalcBatchTimesThreads(ns, target, cycle_number, pct, isPrep)
+  calc.target = target
+  calc.cycle_number = cycle_number
+  calc.isPrep = isPrep
+
   // prettier-ignore
   const {
-    weaken1Threads, weaken1StartTime, weaken1Duration, weaken1EndTime,
-    weaken2Threads, weaken2StartTime, weaken2Duration, weaken2EndTime,
-    growThreads, growStartTime, growDuration, growEndTime,
-    hackThreads, hackStartTime, hackDuration, hackEndTime,
-    money, maxMoney, sec, minSec,
-  } = CalcBatchTimesThreads(ns, target, pct, isPrep)
+    weaken1Threads, weaken1StartTime, weaken1Duration, weaken1EndTime, weaken1SecToRemove,
+    weaken2Threads, weaken2StartTime, weaken2Duration, weaken2EndTime, weaken2SecToRemove,
+    growThreads, growStartTime, growDuration, growEndTime, growSecurityIncrease,
+    hackThreads, hackStartTime, hackDuration, hackEndTime, hackSecurityIncrease, hackMoneyRemoved,
+    money, maxMoney, sec, minSec, startingExtraSecurity,
+  } = calc
+  getServerCycleByNumber(target, cycle_number).calc = calc
+  
 
   // prettier-ignore
   BatchReport(
-    ns, target, isPrep,
+    ns, target, cycle_number, isPrep,
     weaken1Threads, weaken1StartTime, weaken1Duration, weaken1EndTime,
     weaken2Threads, weaken2StartTime, weaken2Duration, weaken2EndTime,
     growThreads, growStartTime, growDuration, growEndTime,
@@ -241,7 +248,7 @@ async function RunBatch(ns, target, cycle_number, pct, isPrep = false) {
     weaken2Threads, weaken2StartTime, weaken2Duration, weaken2EndTime,
     growThreads, growStartTime, growDuration, growEndTime,
     hackThreads, hackStartTime, hackDuration, hackEndTime,
-    expectedDuration, expectedTime, all_pids: [] 
+    expectedDuration, expectedTime, batchPhaseDelay: config.batchPhaseDelay, all_pids: {}
   }
   getServerCycleByNumber(target, cycle_number).batch = batch
 
@@ -256,7 +263,7 @@ async function RunBatch(ns, target, cycle_number, pct, isPrep = false) {
     [target, phase],
     -1
   ))
-  batch.all_pids.push(...pids)
+  batch.all_pids.weaken1 = [...pids]
 
   // start weaken2
   await ns.asleep(weaken2StartTime)
@@ -270,7 +277,7 @@ async function RunBatch(ns, target, cycle_number, pct, isPrep = false) {
     [target, phase],
     -1
   ))
-  batch.all_pids.push(...pids)
+  batch.all_pids.weaken2 = [...pids]
 
   // start grow
   if (growThreads > 0) {
@@ -284,7 +291,7 @@ async function RunBatch(ns, target, cycle_number, pct, isPrep = false) {
       [target, phase],
       -1
     ))
-    batch.all_pids.push(...pids)
+    batch.all_pids.grow = [...pids]
   }
 
   // start hack
@@ -299,17 +306,23 @@ async function RunBatch(ns, target, cycle_number, pct, isPrep = false) {
       [target, phase],
       -1
     ))
-    batch.all_pids.push(...pids)
+    batch.all_pids.hack = [...pids]
   }
 
+  // await ns.asleep(100) // wait for things to start up for a good ram measurement? do we need to wait?
   let ram = new MemoryMap(ns)
   batch.ram = {
     total: ram.total,
     used: ram.used,
     available: ram.available,
   }
-  if (batch.all_pids.length > 0) {
-    await WaitPids(ns, batch.all_pids, expectedDuration - config.batchPhaseDelay)
+  let all_pids = []
+  for (let pids_list of Object.values(batch.all_pids)) {
+    all_pids.push(...pids_list)
+  }
+  batch.all_pids.all = all_pids
+  if (batch.all_pids.all.length > 0) {
+    await WaitPids(ns, batch.all_pids.all, expectedDuration - config.batchPhaseDelay)
   }
   let result = { target, isPrep, batch }
   // for (let key in result) {
@@ -432,6 +445,7 @@ function GetNextExploitTargets(ns, num_new_targets, exclude_targets = []) {
 function BatchReport(
   ns,
   server,
+  cycle_number,
   isPrep,
   weaken1Threads,
   weaken1StartTime,
@@ -521,7 +535,7 @@ function centerString(string, desiredWidth) {
   return string.padStart(string.length + Math.floor((desiredWidth - string.length) / 2)).padEnd(desiredWidth)
 }
 
-function CalcBatchTimesThreads(ns, target, hackPct, isPrep) {
+function CalcBatchTimesThreads(ns, target, cycle_number, hackPct, isPrep) {
   // HWGW. assume server is prepped (max money, sec-minSec = 0)
   //                    |= hack ====================|
   // |=weaken 1======================================|
@@ -571,13 +585,6 @@ function CalcBatchTimesThreads(ns, target, hackPct, isPrep) {
   let weaken1Threads = Math.ceil(weaken1SecToRemove / ns.weakenAnalyze(1))
   let weaken1StartTime = 0
   let weaken1EndTime = weaken1StartTime + weaken1Duration
-  if (weaken1Threads <= 0) {
-    weaken1Threads = 0
-    weaken1SecToRemove = 0
-    weaken1Duration = 0
-    weaken1StartTime = 0
-    weaken1EndTime = 0
-  }
 
   // grow
   let growThreads = Math.ceil(
@@ -600,7 +607,7 @@ function CalcBatchTimesThreads(ns, target, hackPct, isPrep) {
   let weaken2Threads = Math.ceil(weaken2SecToRemove / ns.weakenAnalyze(1))
   let weaken2StartTime = weaken1StartTime + 2 * config.batchPhaseDelay
   let weaken2EndTime = weaken2StartTime + weaken2Duration
-  if (weaken1Threads <= 0) {
+  if (weaken2Threads <= 0) {
     weaken2Threads = 0
     weaken2SecToRemove = 0
     weaken2Duration = 0
@@ -609,26 +616,35 @@ function CalcBatchTimesThreads(ns, target, hackPct, isPrep) {
   }
 
   let result = {
+    target,
+    cycle_number,
+    isPrep,
     weaken1Threads,
     weaken1StartTime,
     weaken1Duration,
     weaken1EndTime,
+    weaken1SecToRemove,
     weaken2Threads,
     weaken2StartTime,
     weaken2Duration,
     weaken2EndTime,
+    weaken2SecToRemove,
     growThreads,
     growStartTime,
     growDuration,
     growEndTime,
+    growSecurityIncrease,
     hackThreads,
     hackStartTime,
     hackDuration,
     hackEndTime,
+    hackSecurityIncrease,
+    hackMoneyRemoved,
     money,
     maxMoney,
     sec,
     minSec,
+    startingExtraSecurity,
   }
   return result
 }
