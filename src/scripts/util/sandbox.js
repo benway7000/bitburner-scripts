@@ -1,5 +1,6 @@
 import { GetTopHackServers } from "scripts/lib/metrics-simple"
 import { FormatTime } from "scripts/lib/utils"
+import { Player } from "@player"
 
 const state = {
   stop: false,
@@ -144,6 +145,9 @@ export async function main(ns) {
   // const programs = ns.singularity.getDarkwebPrograms()
   // ns.tprint(`Available programs are: ${programs.join(", ")}`)
   // =========================================
+  // let player = ns.getPlayer()
+  // ns.tprint(`ns.player: ${JSON.stringify(Player.sourceFileLvl(4))}`)
+
   // =========================================
   // =========================================
 }

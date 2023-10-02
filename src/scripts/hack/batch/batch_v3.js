@@ -2,7 +2,7 @@ import { GetTopHackServers, SortServerListByTopHacking } from "scripts/lib/metri
 import { RunScript, MemoryMap } from "scripts/lib/ram"
 import { WaitPids, FormatTime } from "scripts/lib/utils"
 
-const SCRIPT_NAME_PREFIX = "batch_v2"
+const SCRIPT_NAME_PREFIX = "batch_v3"
 const SCRIPT_PATH = "/scripts/hack/batch/" + SCRIPT_NAME_PREFIX
 
 const MAX_SECURITY_DRIFT = 3 // This is how far from minimum security we allow the server to be before weakening
@@ -10,6 +10,7 @@ const MAX_MONEY_DRIFT_PCT = 0.1 // This is how far from 100% money we allow the 
 const DEFAULT_PCT = 0.5 // This is the default 1-based percentage of money we want to hack from the server in a single pass
 const GROW_THREAD_MULT = 1.2 // extra grow threads to be sure
 const MAX_ACTIVE_CYCLES = 500
+const MAX_TRIES_PER_LOOP = 10
 // const MAX_PIDS = 50 // max number of pids total
 
 const JOESGUNS = "joesguns"
@@ -28,6 +29,11 @@ export const CYCLE_STATES = {
 // https://github.com/xxxsinx/bitburner/blob/main/v1.js
 
 /**
+ * 
+ * Batch_v3
+ * 
+ * v3 adds multiple targets per MainLoop
+ * 
  * Batch_v2
  * 
  * Instead of promise chaining, lets try running batches from the main loop.
@@ -202,19 +208,14 @@ export async function main(ns) {
 
   // Open the tail window when the script starts
   // ns.tail();
-  let num_start_targets = 1
-  // if (mode === "hack") {
-  //   const ram = new MemoryMap(ns, true)
-  //   num_start_targets = Math.min(Math.max(ram.total / 2000, 2), 5) // assume 2 TB per target.  keep between 2 and 5.
-  //   ns.print("Starting with " + num_start_targets + " targets.")
-  // }
   await MainLoop(ns, DEFAULT_PCT)
 }
 
 async function MainLoop(ns, pct) {
   while (true) {
     let ramMap = new MemoryMap(ns)
-    if (ramMap.available > 3000) { // more than 3 TB, launch a new batch
+    let tries = 0
+    while (ramMap.available > 3000) { // more than 3 TB, launch a new batch
       let topTarget = GetNextBatchTarget(ns)
       if (topTarget) {
         ns.print(`MainLoop: launching new batch on ${topTarget}. Active Cycles: ${getActiveCyclesCount("all")}`)
@@ -222,6 +223,7 @@ async function MainLoop(ns, pct) {
       } else {
         ns.print(`MainLoop: could not find a new target`)
       }
+      if (tries++ > MAX_TRIES_PER_LOOP) break
     }
 
     WriteHackStatus(ns)
@@ -388,6 +390,7 @@ async function RunBatch(ns, target, cycle_number, pct, isPrep = false) {
 
 async function StartFullCycleOnTarget(ns, target, pct, cycle_number = -1) {
   if (cycle_number === -1) cycle_number = getServerCyclesNextNumber(target)
+  getServerCycleByNumber(target, cycle_number).cycle_start_time = Date.now()
   if (!IsPrepped(ns, target)) {
     getServerCycleByNumber(target, cycle_number).cycle_state = CYCLE_STATES.PREP
     WriteHackStatus(ns)
@@ -427,6 +430,12 @@ function GetNextBatchTarget(ns) {
       if (cycles.some(c => c.cycle_state === CYCLE_STATES.PREP)) {
         continue
       }
+    }
+
+    // check for not running a cycle in last 10 seconds
+    let cycles = getServerCycles(target.name)
+    if (cycles.some(c => (Date.now () - c.cycle_start_time) < 10 * 1000)) {
+      continue
     }
     return target.name
   }
@@ -529,7 +538,7 @@ function BatchReport(
   //   line = `${" ".repeat((desiredContentWidth - 9) / 2)}[No W2]${" ".repeat((desiredContentWidth - 9) / 2)}`
   // }
   // ns.print(`${startLine}${startWall}${line}${endWall}`)
-
+  
   ns.print(`${startLine}└${"─".repeat(defaultLogWidth - startLine.length - 2)}┘`)
   ns.print("")
 }
