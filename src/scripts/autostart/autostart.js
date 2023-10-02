@@ -163,7 +163,9 @@ export async function main(ns) {
     //   await TryRunScript(ns, "/scripts/autostart/study.js", ["silent"])
     // }
 
-    RunHackScript(ns, sitrep, "/scripts/hack/loop_hack/v5.js")
+    // RunHackScript(ns, sitrep, "/scripts/hack/loop_hack/v5.js")
+    RunHomeSingletonScript(ns, "/scripts/hack/xp/xp_v1.js", 1, [0.2])
+    RunHomeSingletonScript(ns, "/scripts/hack/batch/batch_v2.js", 1, ["auto"])
 
     // Run manager on joesguns until we have all ports open
     // if (

@@ -49,6 +49,7 @@ const config = {
   },
   getConfigJSON: function (ns) {
     return {
+      hack_type: "loop",
       loopDelay: this.loopDelay,
       currentTargets: this.getCurrentTargets(ns),
       targetAdjust: this.targetAdjust,

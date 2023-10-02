@@ -52,7 +52,7 @@ const config = {
       // ns.print("getCurrentTargetsStates: server: " + server + " checking promise " + state.promise)
       if (
         state.cycles.some((c) =>
-          [CYCLE_STATES.PREP, CYCLE_STATES.BATCH, CYCLE_STATES.CALLBACK].includes(c.cycle_state)
+          [CYCLE_STATES.PREP, CYCLE_STATES.BATCH].includes(c.cycle_state)
         )
       ) {
         // ns.print("getCurrentTargetsStates: state.prpmise is true")
@@ -73,6 +73,7 @@ const config = {
   },
   getConfigJSON: function (ns) {
     return {
+      hack_type: "batch",
       loopDelay: this.loopDelay,
       currentTargets: this.getCurrentTargets(ns),
       currentActiveCycles: getActiveCyclesCount(),
@@ -81,7 +82,6 @@ const config = {
     }
   },
   resetConfig: function () {
-    this.loopDelay = 5000
     this.serverStates = {}
     this.current_pids = 0
     this.targetAdjust = 0
@@ -126,6 +126,18 @@ function getServerCycleByNumber(server, cycle_number) {
   return new_cycle
 }
 
+function rmServerCycleByNumber(ns, server, cycle_number) {
+  let cycles = getServerCycles(server)
+  for (let cycle of cycles) {
+    if (cycle.cycle_number === cycle_number) {
+      let index = cycles.indexOf(cycle)
+      ns.print(`rmServerCycleByNumber: idx ${index} of ${cycles.length - 1}`)
+      cycles.splice(index, 1)
+      return
+    }
+  }
+}
+
 function getServerCyclesNextNumber(server) {
   let cycles = getServerCycles(server)
   if (cycles.length > 0) {
@@ -137,7 +149,7 @@ function getServerCyclesNextNumber(server) {
 
 function getActiveCyclesCount(server = "all") {
   let cycle_count = 0
-  if (server == "all") {
+  if (server === "all") {
     for (let server in config.serverStates) {
       let state = config.serverStates[server]
       // ns.print("getCurrentTargetsStates: server: " + server + " checking promise " + state.promise)
@@ -165,23 +177,23 @@ export async function main(ns) {
   // TODO: read config from /data/hack.txt?
   config.resetConfig()
 
-  // Parameters
-  const [mode, pct = DEFAULT_PCT] = ns.args
+  // // Parameters
+  // const [mode, pct = DEFAULT_PCT] = ns.args
 
-  // Show usage if no parameters were passed
-  if (mode == undefined) {
-    ns.tprint("ERROR: No mode specified!")
-    ns.tprint("INFO : Usage: run " + SCRIPT_NAME_PREFIX + ".js <mode> <pct>")
-    ns.tprint("INFO :")
-    ns.tprint("INFO : HACK MODE: run " + SCRIPT_NAME_PREFIX + ".js hack <pct>")
-    ns.tprint(
-      "INFO :    <pct> is the 1-based maximum percentage to hack from the target (Optional, default is 25%)"
-    )
-    ns.tprint("INFO :")
-    ns.tprint("INFO : XP MODE: run " + SCRIPT_NAME_PREFIX + ".js xp")
-    ns.tprint("INFO :    This mode will simply prepare and then throw all the ram on grow at joesguns for XP")
-    return
-  }
+  // // Show usage if no parameters were passed
+  // if (mode == undefined) {
+  //   ns.tprint("ERROR: No mode specified!")
+  //   ns.tprint("INFO : Usage: run " + SCRIPT_NAME_PREFIX + ".js <mode> <pct>")
+  //   ns.tprint("INFO :")
+  //   ns.tprint("INFO : HACK MODE: run " + SCRIPT_NAME_PREFIX + ".js hack <pct>")
+  //   ns.tprint(
+  //     "INFO :    <pct> is the 1-based maximum percentage to hack from the target (Optional, default is 25%)"
+  //   )
+  //   ns.tprint("INFO :")
+  //   ns.tprint("INFO : XP MODE: run " + SCRIPT_NAME_PREFIX + ".js xp")
+  //   ns.tprint("INFO :    This mode will simply prepare and then throw all the ram on grow at joesguns for XP")
+  //   return
+  // }
 
   // This script calls 1-liner worker scripts, the following commands create those scripts on the current host
   await CreateScript(ns, "hack")
@@ -196,25 +208,17 @@ export async function main(ns) {
   //   num_start_targets = Math.min(Math.max(ram.total / 2000, 2), 5) // assume 2 TB per target.  keep between 2 and 5.
   //   ns.print("Starting with " + num_start_targets + " targets.")
   // }
-  await MainLoop(ns, num_start_targets, pct, mode)
+  await MainLoop(ns, DEFAULT_PCT)
 }
 
-async function MainLoop(ns, num_start_targets, pct, mode) {
+async function MainLoop(ns, pct) {
   while (true) {
     let ramMap = new MemoryMap(ns)
     if (ramMap.available > 3000) { // more than 3 TB, launch a new batch
       let topTarget = GetNextBatchTarget(ns)
       if (topTarget) {
-        let cycle_count = getActiveCyclesCount(topTarget)
-        let expectedDuration = getServerCycles(topTarget)[0]?.batch?.expectedDuration ?? Infinity
-        let max_cycles_for_server = expectedDuration / config.loopDelay
-        ns.print(`MainLoop: target ${topTarget}, maximum cycle count ${max_cycles_for_server}. expDur ${expectedDuration}`)
-        if (cycle_count >= max_cycles_for_server) {
-          ns.print(`MainLoop: target ${topTarget}, maximum cycle count ${cycle_count} reached. `)
-        } else {
-          ns.print(`MainLoop: launching new batch on ${topTarget}. Active Cycles: ${cycle_count}`)
-          StartFullCycleOnTarget(ns, topTarget, pct)
-        }
+        ns.print(`MainLoop: launching new batch on ${topTarget}. Active Cycles: ${getActiveCyclesCount("all")}`)
+        StartFullCycleOnTarget(ns, topTarget, pct)
       } else {
         ns.print(`MainLoop: could not find a new target`)
       }
@@ -301,7 +305,7 @@ async function RunBatch(ns, target, cycle_number, pct, isPrep = false) {
         ns,
         SCRIPT_NAME_PREFIX + script_name + ".js",
         threads,
-        [target, phase],
+        [target, phase, cycle_number],
         -1
       ))
     batch.all_pids.weaken1 = [...pids]
@@ -317,7 +321,7 @@ async function RunBatch(ns, target, cycle_number, pct, isPrep = false) {
         ns,
         SCRIPT_NAME_PREFIX + script_name + ".js",
         threads,
-        [target, phase],
+        [target, phase, cycle_number],
         -1
       ))
     batch.all_pids.weaken2 = [...pids]
@@ -332,7 +336,7 @@ async function RunBatch(ns, target, cycle_number, pct, isPrep = false) {
         ns,
         SCRIPT_NAME_PREFIX + script_name + ".js",
         threads,
-        [target, phase],
+        [target, phase, cycle_number],
         -1
       ))
     batch.all_pids.grow = [...pids]
@@ -347,7 +351,7 @@ async function RunBatch(ns, target, cycle_number, pct, isPrep = false) {
         ns,
         SCRIPT_NAME_PREFIX + script_name + ".js",
         threads,
-        [target, phase],
+        [target, phase, cycle_number],
         -1
       ))
     batch.all_pids.hack = [...pids]
@@ -371,7 +375,10 @@ async function RunBatch(ns, target, cycle_number, pct, isPrep = false) {
       endingMoneyShort: ns.getServerMaxMoney(target) - ns.getServerMoneyAvailable(target),
       endingSecurityExtra: ns.getServerSecurityLevel(target) - ns.getServerMinSecurityLevel(target)
     }
-    if (batch.result.endingMoneyShort != 0 || batch.result.endingSecurityExtra != 0) batch.result.misCalc = true
+    if (batch.result.endingMoneyShort != 0 || batch.result.endingSecurityExtra != 0) {
+      batch.result.misCalc = true
+      debugger
+    }
   }
   let result = { target, isPrep, batch }
   // for (let key in result) {
@@ -393,26 +400,32 @@ async function StartFullCycleOnTarget(ns, target, pct, cycle_number = -1) {
   getServerCycleByNumber(target, cycle_number).cycle_state = CYCLE_STATES.BATCH
   WriteHackStatus(ns)
   await RunBatch(ns, target, cycle_number, pct)
-  getServerCycleByNumber(target, cycle_number).cycle_state = CYCLE_STATES.COMPLETE
+  ns.print(`Target ${target}, cycle ${cycle_number} has completed.`)
+  rmServerCycleByNumber(ns, target, cycle_number)
   WriteHackStatus(ns)
 }
 
-async function StartXpCycleOnTarget(ns, target, pct) {
-  if (cycle_number === -1) cycle_number = getServerCyclesNextNumber(target)
-  getServerCycleByNumber(target, cycle_number).cycle_state = CYCLE_STATES.PREP
-  await PrepServer(ns, target, cycle_number, pct)
-  getServerCycleByNumber(target, cycle_number).cycle_state = CYCLE_STATES.COMPLETE
-}
 
 /** returns the next-best target, excluding the passed-in targets */
 function GetNextBatchTarget(ns) {
   let top_targets = GetTopHackServers(ns, 50)
 
   // find top target
+  // if already at max cycles, then go to next target
   // if prepped, then batch
   // if not prepped and not prepping, then batch
   // if not prepped but prepping, go to next target
   for (let target of top_targets) {
+
+    // check for max cycles
+    let cycle_count = getActiveCyclesCount(target.name)
+    let expectedDuration = getServerCycles(target.name)[0]?.batch?.expectedDuration ?? Infinity
+    let max_cycles_for_server = Math.max((expectedDuration / config.loopDelay) - 1, 1)
+    if (cycle_count >= max_cycles_for_server) {
+      continue
+    }
+
+    // check for not already prepping
     if (!IsPrepped(ns, target.name)) {
       let cycles = getServerCycles(target.name)
       if (cycles.some(c => c.cycle_state === CYCLE_STATES.PREP)) {
@@ -487,38 +500,38 @@ function BatchReport(
     let overallDuration = weaken1Duration + 2 * config.batchPhaseDelay
     return Math.floor((desiredContentWidth * duration) / overallDuration)
   }
-  // draw batch diagram
-  line = `${"─".repeat((desiredContentWidth - 6) / 2)} ${isPrep ? "Prep" : "Hack"} ${"─".repeat(
-    (desiredContentWidth - 6) / 2
-  )}`
-  ns.print(`${startLine}${startWall}${line}${endWall}`)
-  if (hackThreads > 0) {
-    line = `${" ".repeat(DurToLen(hackStartTime))}[= H ${"=".repeat(DurToLen(hackDuration) - 3 - 6)}]   ` // 3 for finishing, 6 for [= H ]
-  } else {
-    line = `${" ".repeat((desiredContentWidth - 9) / 2)}[No Hack]${" ".repeat((desiredContentWidth - 9) / 2)}`
-  }
-  ns.print(`${startLine}${startWall}${line}${endWall}`)
-  if (weaken1Threads > 0) {
-    line = `${" ".repeat(DurToLen(weaken1StartTime))}[= W1 ${"=".repeat(
-      DurToLen(weaken1Duration) - 3 - 7
-    )}]  ` // 3 for finishing, 7 for [= W1 ]
-  } else {
-    line = `${" ".repeat((desiredContentWidth - 9) / 2)}[No W1]${" ".repeat((desiredContentWidth - 9) / 2)}`
-  }
-  ns.print(`${startLine}${startWall}${line}${endWall}`)
-  if (growThreads > 0) {
-    line = `${" ".repeat(DurToLen(growStartTime))}[= G ${"=".repeat(DurToLen(growDuration) - 3 - 6)}] ` // 3 for finishing, 6 for [= G ]
-  } else {
-    line = `${" ".repeat((desiredContentWidth - 9) / 2)}[No Grow]${" ".repeat((desiredContentWidth - 9) / 2)}`
-  }
-  ns.print(`${startLine}${startWall}${line}${endWall}`)
-  if (weaken2Threads > 0) {
-    line = `${" ".repeat(DurToLen(weaken2StartTime) + 1)}[= W2 ${"=".repeat(
-      DurToLen(weaken2Duration) - 3 - 7
-    )}]` // 3 for finishing, 7 for [= W2 ]
-  } else {
-    line = `${" ".repeat((desiredContentWidth - 9) / 2)}[No W2]${" ".repeat((desiredContentWidth - 9) / 2)}`
-  }
+  // // draw batch diagram
+  // line = `${"─".repeat((desiredContentWidth - 6) / 2)} ${isPrep ? "Prep" : "Hack"} ${"─".repeat(
+  //   (desiredContentWidth - 6) / 2
+  // )}`
+  // ns.print(`${startLine}${startWall}${line}${endWall}`)
+  // if (hackThreads > 0) {
+  //   line = `${" ".repeat(DurToLen(hackStartTime))}[= H ${"=".repeat(DurToLen(hackDuration) - 3 - 6)}]   ` // 3 for finishing, 6 for [= H ]
+  // } else {
+  //   line = `${" ".repeat((desiredContentWidth - 9) / 2)}[No Hack]${" ".repeat((desiredContentWidth - 9) / 2)}`
+  // }
+  // ns.print(`${startLine}${startWall}${line}${endWall}`)
+  // if (weaken1Threads > 0) {
+  //   line = `${" ".repeat(DurToLen(weaken1StartTime))}[= W1 ${"=".repeat(
+  //     DurToLen(weaken1Duration) - 3 - 7
+  //   )}]  ` // 3 for finishing, 7 for [= W1 ]
+  // } else {
+  //   line = `${" ".repeat((desiredContentWidth - 9) / 2)}[No W1]${" ".repeat((desiredContentWidth - 9) / 2)}`
+  // }
+  // ns.print(`${startLine}${startWall}${line}${endWall}`)
+  // if (growThreads > 0) {
+  //   line = `${" ".repeat(DurToLen(growStartTime))}[= G ${"=".repeat(DurToLen(growDuration) - 3 - 6)}] ` // 3 for finishing, 6 for [= G ]
+  // } else {
+  //   line = `${" ".repeat((desiredContentWidth - 9) / 2)}[No Grow]${" ".repeat((desiredContentWidth - 9) / 2)}`
+  // }
+  // ns.print(`${startLine}${startWall}${line}${endWall}`)
+  // if (weaken2Threads > 0) {
+  //   line = `${" ".repeat(DurToLen(weaken2StartTime) + 1)}[= W2 ${"=".repeat(
+  //     DurToLen(weaken2Duration) - 3 - 7
+  //   )}]` // 3 for finishing, 7 for [= W2 ]
+  // } else {
+  //   line = `${" ".repeat((desiredContentWidth - 9) / 2)}[No W2]${" ".repeat((desiredContentWidth - 9) / 2)}`
+  // }
 
   ns.print(`${startLine}${startWall}${line}${endWall}`)
   ns.print(`${startLine}└${"─".repeat(defaultLogWidth - startLine.length - 2)}┘`)
@@ -549,7 +562,7 @@ function CalcBatchTimesThreads(ns, target, cycle_number, hackPct, isPrep) {
   if (!isPrep && startingExtraSecurity > 0) {
     let msg = `ERROR:CalcBatchTimesThreads: ${target} is NOT PREPPED, sec is ${startingExtraSecurity}`
     ns.print(msg)
-    throw new Error(msg)
+    // throw new Error(msg)
   }
 
   let hackDuration = ns.getHackTime(target)

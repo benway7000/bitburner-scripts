@@ -122,19 +122,20 @@ export async function main(ns) {
     let hackable = so.moneyMax > 0 && so.hasAdminRights
     let hacking = ""
     if (hack_report.currentTargets.includes(server.name)) {
-      // loop hack results have a phase
-      if (hack_report.serverStates[server.name]?.phase) {
+      if (hack_report.hack_type === "loop") {
+        // loop hack results have a phase
         hacking = `${hack_report.serverStates[server.name].phase.toUpperCase()[0]} ${FormatTime(
           hack_report.serverStates[server.name].expectedDuration
         )} (${FormatTime(hack_report.serverStates[server.name].expectedTime - Date.now())})`
-      } else if (hack_report.serverStates[server.name]?.cycles) {
+
+      } else if (hack_report.hack_type === "batch") {
         // batch hack results have cycles
         let cycles = hack_report.serverStates[server.name]?.cycles
-        cycles = cycles.filter(c => !["complete", "stopped"].includes(c.cycle_state))
+        cycles = cycles.filter(c => !["complete", "stopped"].includes(c.cycle_state)).sort((a,b) => (b.cycle_number - a.cycle_number))
         if (cycles.length > 0) {
-          hacking = `${cycles.length}C. (${FormatTime(cycles[0].batch.expectedTime - Date.now())})`
+          hacking = `${cycles.length}C. (${FormatTime(cycles[cycles.length - 1].batch.expectedTime - Date.now())})`
         }
-      } 
+      }
     }
 
     let weight =
@@ -161,15 +162,15 @@ export async function main(ns) {
       },
       hackable
         ? {
-            color: secColor,
-            text: moneyMax > 0 ? (sec - minSec).toFixed(2).padStart(6) : "".padEnd(6),
-          }
+          color: secColor,
+          text: moneyMax > 0 ? (sec - minSec).toFixed(2).padStart(6) : "".padEnd(6),
+        }
         : "",
       hackable
         ? {
-            color: "white",
-            text: " " + Math.round(so.minDifficulty).toString().padStart(4),
-          }
+          color: "white",
+          text: " " + Math.round(so.minDifficulty).toString().padStart(4),
+        }
         : "",
       {
         color: hackReqColor,
@@ -177,9 +178,9 @@ export async function main(ns) {
       },
       hackable
         ? {
-            color: prepped ? "lime" : "Grey",
-            text: prepped ? "Yes".padStart(6) : "-".padStart(5),
-          }
+          color: prepped ? "lime" : "Grey",
+          text: prepped ? "Yes".padStart(6) : "-".padStart(5),
+        }
         : "",
       weight ? { color: "white", text: " " + weight.toFixed(0) } : "",
       { color: "lime", text: hacking.padStart(16) },
@@ -189,38 +190,38 @@ export async function main(ns) {
       let xp = 0
       try {
         xp = (ns.formulas.hacking.hackExp(so, player) / weakTime) * 100000
-      } catch {}
+      } catch { }
 
       values.push(
         hackable
           ? {
-              color: pctColor(chance),
-              text: " " + (Math.round(chance * 100) + "%").padStart(5),
-            }
+            color: pctColor(chance),
+            text: " " + (Math.round(chance * 100) + "%").padStart(5),
+          }
           : "",
         hackable
           ? {
-              color: "white",
-              text:
-                " " +
-                FormatTime(weakTime)
-                  .replace(" minutes", "m")
-                  .replace(" seconds", "s")
-                  .replace("  ", " 0")
-                  .padStart(9),
-            }
+            color: "white",
+            text:
+              " " +
+              FormatTime(weakTime)
+                .replace(" minutes", "m")
+                .replace(" seconds", "s")
+                .replace("  ", " 0")
+                .padStart(9),
+          }
           : "",
         hackable
           ? {
-              color: "white",
-              text:
-                " " +
-                FormatTime(ns.getWeakenTime(server.name))
-                  .replace(" minutes", "m")
-                  .replace(" seconds", "s")
-                  .replace("  ", " 0")
-                  .padStart(9),
-            }
+            color: "white",
+            text:
+              " " +
+              FormatTime(ns.getWeakenTime(server.name))
+                .replace(" minutes", "m")
+                .replace(" seconds", "s")
+                .replace("  ", " 0")
+                .padStart(9),
+          }
           : "",
         " " + xp.toFixed(2)
       )

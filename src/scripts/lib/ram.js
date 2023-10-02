@@ -347,7 +347,8 @@ export function RunScript(
   threads,
   params,
   maxSpread = 1,
-  allowPartial = true
+  allowPartial = true,
+  silentInfo = true
 ) {
   let ramMap = new MemoryMap(ns)
 
@@ -411,7 +412,7 @@ export function RunScript(
 
       let actualThreads = Math.ceil(maxThreads / coreBonus)
       if (actualThreads != maxThreads) {
-        ns.print(
+        if (!silentInfo) ns.print(
           "INFO: Readjusting threads from " +
             maxThreads +
             " to " +
@@ -428,15 +429,7 @@ export function RunScript(
         performance.now() + unique++
       )
       if (pid > 0) {
-        ns.print(
-          "Started script " +
-            scriptName +
-            " on " +
-            server +
-            " with " +
-            actualThreads +
-            " threads"
-        )
+        if (!silentInfo) ns.print(`Started script ${scriptName} ${params} on ${server} with ${actualThreads} threads`)
         pids.push(pid)
         fired += maxThreads
         if (maxSpread > 0 && pids.length >= maxSpread) {
