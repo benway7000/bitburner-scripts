@@ -1,5 +1,5 @@
 import { GetTopHackServers } from "scripts/lib/metrics-simple"
-import { FormatTime } from "scripts/lib/utils"
+import { FormatTime, HasSingularity } from "scripts/lib/utils"
 import { Player } from "@player"
 
 const state = {
@@ -148,6 +148,16 @@ export async function main(ns) {
   // let player = ns.getPlayer()
   // ns.tprint(`ns.player: ${JSON.stringify(Player.sourceFileLvl(4))}`)
 
+  // =========================================
+  ns.tprint(`HasSingularity: ${HasSingularity(ns)}`)
+  // =========================================
+  // =========================================
+  // =========================================
+  // =========================================
+  // =========================================
+  // =========================================
+  // =========================================
+  // =========================================
   // =========================================
   // =========================================
 }

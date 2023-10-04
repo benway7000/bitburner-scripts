@@ -70,10 +70,10 @@ function CycleGraph(ns, cycle) {
 
   function CalcGraphLine(ns, label, startTime, duration) {
     let endSpacer = ""
-    if (label == "H") endSpacer = "   "
-    if (label == "W1") endSpacer = "  "
-    if (label == "G") endSpacer = " "
-    if (label == "W2") endSpacer = ""
+    if (label.startsWith("H")) endSpacer = "   "
+    if (label.startsWith("W1")) endSpacer = "  "
+    if (label.startsWith("G")) endSpacer = " "
+    if (label.startsWith("W2")) endSpacer = ""
 
     let startSpacer = DurToLen(ns, startTime)
     let barLength = maxPhaseLength - startSpacer - "[= ".length - label.length - " ".length - "]".length - endSpacer.length
@@ -107,7 +107,7 @@ function CycleGraph(ns, cycle) {
 
   // hack line
   if (hackThreads > 0) {
-    line = CalcGraphLine(ns, "H", hackStartTime, hackDuration)
+    line = CalcGraphLine(ns, `H t${hackThreads}`, hackStartTime, hackDuration)
     // line = `${" ".repeat(DurToLen(ns, hackStartTime))}[= H ${"=".repeat(DurToLen(ns, hackDuration) - 6 - 2)}]` // 6 for [= H ]
   } else {
     line = `${PadCenter("[No Hack]",maxPhaseLength-3)}`
@@ -116,7 +116,7 @@ function CycleGraph(ns, cycle) {
 
   // weaken1 line
   if (weaken1Threads > 0) {
-    line = CalcGraphLine(ns, "W1", weaken1StartTime, weaken1Duration)
+    line = CalcGraphLine(ns, `W1 t${weaken1Threads}`, weaken1StartTime, weaken1Duration)
     // line = `${" ".repeat(DurToLen(ns, weaken1StartTime))}[= W1 ${"=".repeat(
     //   DurToLen(ns, weaken1Duration) - 7 - 2
     // )}]` // 7 for [= W1 ]
@@ -127,7 +127,7 @@ function CycleGraph(ns, cycle) {
 
   // grow line
   if (growThreads > 0) {
-    line = CalcGraphLine(ns, "G", growStartTime, growDuration)
+    line = CalcGraphLine(ns, `G t${growThreads}`, growStartTime, growDuration)
     // line = `${" ".repeat(DurToLen(ns, growStartTime))}[= G ${"=".repeat(DurToLen(ns, growDuration) - 6 - 1)}]` // 6 for [= G ]
   } else {
     line = `${PadCenter("[No Grow]",maxPhaseLength-1)}`
@@ -136,7 +136,7 @@ function CycleGraph(ns, cycle) {
 
   //weaken2 line
   if (weaken2Threads > 0) {
-    line = CalcGraphLine(ns, "W2", weaken2StartTime, weaken2Duration)
+    line = CalcGraphLine(ns, `W2 t${weaken2Threads}`, weaken2StartTime, weaken2Duration)
     // line = `${" ".repeat(DurToLen(ns, weaken2StartTime) + 1)}[= W2 ${"=".repeat(
     //   DurToLen(ns, weaken2Duration) - 7 - 1
     // )}]` // 7 for [= W2 ]

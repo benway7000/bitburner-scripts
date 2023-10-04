@@ -3,6 +3,7 @@ import {
   GetCity,
   GetAlphaEnterprises,
   TypeInTerminal,
+  HasSingularity
 } from "scripts/lib/utils"
 
 const doc = eval("document")
@@ -13,6 +14,46 @@ export async function main(ns) {
 }
 
 export function BuyPrograms(ns) {
+  if (HasSingularity(ns)) {
+    BuyProgramsPostSingularity(ns)
+  } else {
+    BuyProgramsPreSingularity(ns)
+  }
+}
+
+function BuyProgramsPostSingularity(ns) {
+  let result = ns.singularity.purchaseTor()
+  if (result) {
+    const PROGRAMS = [
+      { name: "BruteSSH.exe", cost: 500e3 },
+      { name: "FTPCrack.exe", cost: 1500e3 },
+      { name: "relaySMTP.exe", cost: 5e6 },
+      { name: "HTTPWorm.exe", cost: 30e6 },
+      { name: "AutoLink.exe", cost: 1e6 },
+      { name: "ServerProfiler.exe", cost: 500e3 },
+      { name: "DeepscanV1.exe", cost: 500000 },
+      { name: "DeepscanV2.exe", cost: 25e6 },
+      // { name: "Formulas.exe", cost: 5e9 },
+      { name: "SQLInject.exe", cost: 250e6 }, // gets us to ports 5 and this will not be called anymore
+    ]
+
+    for (const program of PROGRAMS) {
+      if (!ns.fileExists(program.name)) {
+        if (ns.getPlayer().money < program.cost) {
+          ns.print("Not enough money to buy " + program.name)
+          continue
+        }
+        if (ns.singularity.purchaseProgram(program.name)) {
+          ns.tprint("SUCCESS: Purchased " + program.name)
+          LogMessage(ns, "SUCCESS: Purchased " + program.name)
+        }
+      }
+    }
+
+  }
+}
+
+function BuyProgramsPreSingularity(ns) {
   if (ns.getPlayer().money < 200000) {
     ns.print("WARN: Not enough money to do anything.")
     return
@@ -56,17 +97,17 @@ export function BuyPrograms(ns) {
   */
   // already have it. so buy programs
   const PROGRAMS = [
-    {name: "BruteSSH.exe", cost: 500e3},
-    {name: "FTPCrack.exe", cost: 1500e3},
-    {name: "relaySMTP.exe", cost: 5e6},
-    {name: "HTTPWorm.exe", cost: 30e6},
-    {name: "AutoLink.exe", cost: 1e6},
-    {name: "ServerProfiler.exe", cost: 500e3},
-    {name: "DeepscanV1.exe", cost: 500000},
-    {name: "DeepscanV2.exe", cost: 25e6},
-    {name: "SQLInject.exe", cost: 250e6}, // gets us to ports 5 and this will not be called anymore
+    { name: "BruteSSH.exe", cost: 500e3 },
+    { name: "FTPCrack.exe", cost: 1500e3 },
+    { name: "relaySMTP.exe", cost: 5e6 },
+    { name: "HTTPWorm.exe", cost: 30e6 },
+    { name: "AutoLink.exe", cost: 1e6 },
+    { name: "ServerProfiler.exe", cost: 500e3 },
+    { name: "DeepscanV1.exe", cost: 500000 },
+    { name: "DeepscanV2.exe", cost: 25e6 },
+    { name: "SQLInject.exe", cost: 250e6 }, // gets us to ports 5 and this will not be called anymore
   ]
-       
+
   for (const program of PROGRAMS) {
     // Buy BruteSSH.exe
     if (!ns.fileExists(program.name)) {

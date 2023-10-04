@@ -7,10 +7,12 @@ const SCRIPT_PATH = "/scripts/hack/batch/" + SCRIPT_NAME_PREFIX
 
 const MAX_SECURITY_DRIFT = 3 // This is how far from minimum security we allow the server to be before weakening
 const MAX_MONEY_DRIFT_PCT = 0.1 // This is how far from 100% money we allow the server to be before growing (1-based percentage)
-const DEFAULT_PCT = 0.5 // This is the default 1-based percentage of money we want to hack from the server in a single pass
+const DEFAULT_PCT = 0.25 // This is the default 1-based percentage of money we want to hack from the server in a single pass
 const GROW_THREAD_MULT = 1.2 // extra grow threads to be sure
 const MAX_ACTIVE_CYCLES = 500
-const MAX_TRIES_PER_LOOP = 10
+const MAX_TRIES_PER_LOOP = 50
+const LOOP_DELAY = 3 * 1000
+const BATCH_PHASE_DELAY = 300 // delay (in ms) between batch phase finishes (HWGW)
 // const MAX_PIDS = 50 // max number of pids total
 
 const JOESGUNS = "joesguns"
@@ -45,12 +47,9 @@ export const CYCLE_STATES = {
  */
 
 const config = {
-  loopDelay: 10 * 1000,
-  batchPhaseDelay: 500, // time (in ms) between batch phases finishing
-  multiCycleDelay: 20 * 1000,
+  loopDelay: LOOP_DELAY,
+  batchPhaseDelay: BATCH_PHASE_DELAY,
   serverStates: {},
-  current_pids: 0,
-  targetAdjust: 0,
   getCurrentTargetsStates: function (ns) {
     let current_targets_states = []
     for (let server in this.serverStates) {
@@ -89,8 +88,6 @@ const config = {
   },
   resetConfig: function () {
     this.serverStates = {}
-    this.current_pids = 0
-    this.targetAdjust = 0
   },
 }
 
@@ -137,7 +134,7 @@ function rmServerCycleByNumber(ns, server, cycle_number) {
   for (let cycle of cycles) {
     if (cycle.cycle_number === cycle_number) {
       let index = cycles.indexOf(cycle)
-      ns.print(`rmServerCycleByNumber: idx ${index} of ${cycles.length - 1}`)
+      if (index != cycles.length -1) ns.print(`rmServerCycleByNumber: idx ${index} of ${cycles.length - 1}`)
       cycles.splice(index, 1)
       return
     }
@@ -215,15 +212,18 @@ async function MainLoop(ns, pct) {
   while (true) {
     let ramMap = new MemoryMap(ns)
     let tries = 0
-    while (ramMap.available > 3000) { // more than 3 TB, launch a new batch
+    while (ramMap.available > 2048 || getActiveCyclesCount() == 0) { // more than 2 TB, launch a new batch
       let topTarget = GetNextBatchTarget(ns)
       if (topTarget) {
         ns.print(`MainLoop: launching new batch on ${topTarget}. Active Cycles: ${getActiveCyclesCount("all")}`)
         StartFullCycleOnTarget(ns, topTarget, pct)
       } else {
         ns.print(`MainLoop: could not find a new target`)
+        break
       }
       if (tries++ > MAX_TRIES_PER_LOOP) break
+      await ns.asleep(20) // give time for things to start up and consume ram
+      ramMap = new MemoryMap(ns)
     }
 
     WriteHackStatus(ns)
@@ -375,7 +375,7 @@ async function RunBatch(ns, target, cycle_number, pct, isPrep = false) {
     }
     if (batch.result.endingMoneyShort != 0 || batch.result.endingSecurityExtra != 0) {
       batch.result.misCalc = true
-      debugger
+      // debugger
     }
   }
   let result = { target, isPrep, batch }
@@ -538,7 +538,7 @@ function BatchReport(
   //   line = `${" ".repeat((desiredContentWidth - 9) / 2)}[No W2]${" ".repeat((desiredContentWidth - 9) / 2)}`
   // }
   // ns.print(`${startLine}${startWall}${line}${endWall}`)
-  
+
   ns.print(`${startLine}└${"─".repeat(defaultLogWidth - startLine.length - 2)}┘`)
   ns.print("")
 }

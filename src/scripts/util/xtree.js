@@ -133,7 +133,7 @@ export async function main(ns) {
         let cycles = hack_report.serverStates[server.name]?.cycles
         cycles = cycles.filter(c => !["complete", "stopped"].includes(c.cycle_state)).sort((a,b) => (b.cycle_number - a.cycle_number))
         if (cycles.length > 0) {
-          hacking = `${cycles.length}C. (${FormatTime(cycles[cycles.length - 1].batch.expectedTime - Date.now())})`
+          hacking = `${cycles.length}C. [${FormatTime(cycles[cycles.length - 1].batch.expectedDuration)}] (${FormatTime(cycles[cycles.length - 1].batch.expectedTime - Date.now())})`
         }
       }
     }

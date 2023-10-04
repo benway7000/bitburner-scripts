@@ -284,6 +284,15 @@ export function HasTIX(ns) {
   }
 }
 
+export function HasSingularity(ns) {
+  try {
+    ns.singularity.getOwnedSourceFiles()
+    return true
+  } catch {
+    return false
+  }
+}
+
 // Returns the needed XP for the next hacking level
 export function GetNextLevelXp(ns, skill = "hacking") {
   let player = ns.getPlayer()

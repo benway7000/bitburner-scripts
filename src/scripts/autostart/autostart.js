@@ -113,7 +113,8 @@ export async function main(ns) {
       )
     ) {
       // Install backdoors
-      await TryRunScript(ns, "/scripts/autostart/backdoor.js", BACKDOOR_TARGETS)
+      // await TryRunScript(ns, "/scripts/autostart/backdoor.js", BACKDOOR_TARGETS)
+      RunHomeSingletonScript(ns, "/scripts/autostart/backdoor.js", 1, BACKDOOR_TARGETS)
     }
 
     // purchase servers, after programs are bought
@@ -164,7 +165,7 @@ export async function main(ns) {
     // }
 
     // RunHackScript(ns, sitrep, "/scripts/hack/loop_hack/v5.js")
-    RunHomeSingletonScript(ns, "/scripts/hack/xp/xp_v1.js", 1, [0.2])
+    RunHomeSingletonScript(ns, "/scripts/hack/xp/xp_loop_v1.js", 1, [0.2])
     RunHomeSingletonScript(ns, "/scripts/hack/batch/batch_v3.js", 1, ["auto"])
 
     // Run manager on joesguns until we have all ports open
