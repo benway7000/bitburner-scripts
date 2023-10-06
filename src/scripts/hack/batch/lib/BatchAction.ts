@@ -1,5 +1,7 @@
 import { ns } from "scripts/lib/NS"
-import { Batch, Config, Target } from 'scripts/hack/batch/lib';
+import type { Batch } from "scripts/hack/batch/lib/Batch";
+import type { Target } from "scripts/hack/batch/lib/Target";
+import { Config } from "scripts/hack/batch/lib/index";
 import { RunScript, MemoryMap } from "scripts/lib/ram"
 
 

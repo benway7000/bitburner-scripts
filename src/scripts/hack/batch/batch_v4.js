@@ -1,7 +1,7 @@
 import { GetTopHackServers, SortServerListByTopHacking } from "scripts/lib/metrics-simple"
 import { RunScript, MemoryMap } from "scripts/lib/ram"
 import { WaitPids, FormatTime } from "scripts/lib/utils"
-import { Batch, Config, SessionState, Target } from "scripts/hack/batch/lib"
+import { Batch, Config, SessionState, Target } from "scripts/hack/batch/lib/index"
 
 
 const SCRIPT_NAME_PREFIX = "batch_v4"

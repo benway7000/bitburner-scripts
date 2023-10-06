@@ -1,5 +1,6 @@
 import { ns } from "scripts/lib/NS"
-import { Batch, Target } from "scripts/hack/batch/lib"
+import type { Batch } from "scripts/hack/batch/lib/Batch";
+import type { Target } from "scripts/hack/batch/lib/Target";
 
 export class SessionState {
   static targets: Target[] = []

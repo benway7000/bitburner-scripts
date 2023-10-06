@@ -1,5 +1,5 @@
 import { ns } from "scripts/lib/NS"
-import { Batch, HackBatch, PrepBatch, Config, SessionState } from "scripts/hack/batch/lib"
+import { Batch, HackBatch, PrepBatch, Config, SessionState } from "scripts/hack/batch/lib/index"
 import { MemoryMap } from "/scripts/lib/ram"
 
 type TARGET_STATES = "prep_ready" | "prep_running" | "hack_ready" | "hack_running" | "unknown"

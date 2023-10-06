@@ -1,5 +1,5 @@
 import { NS } from '@ns';
-import { Config, SessionState, Target, TargetNextStep } from "scripts/hack/batch/lib";
+import { Config, SessionState, Target, TargetNextStep } from "scripts/hack/batch/lib/index";
 import { InitializeNS, ns } from "scripts/lib/NS";
 import { GetTopHackServers } from "scripts/lib/metrics-simple";
 
@@ -47,29 +47,29 @@ export async function main(ns: NS) {
 
   // Open the tail window when the script starts
   // ns.tail();
-  await MainLoop()
+  // await MainLoop()
 }
 
-async function MainLoop() {
+async function MainLoop(ns:NS) {
   while (true) {
-    let topTargetHostname = GetTopTargetHostname()
-    let target = SessionState.getTargetByHostname(topTargetHostname) ?? new Target(topTargetHostname)
+    // let topTargetHostname = GetTopTargetHostname()
+    // let target = SessionState.getTargetByHostname(topTargetHostname) ?? new Target(topTargetHostname)
 
-    let targetNextStep:TargetNextStep = target.getNextStep()
-    switch (targetNextStep.state) {
-      case 'prep_ready':
-        // fall through
-      case 'hack_ready':
-        // batch is ready to run
-        target.runOnDeckBatch()
-        break
-      case 'prep_running':
-      case 'hack_running':  // TODO target is full of hacking - can we run another target?
-      case 'unknown':
-        // fall through, do nothing for these cases        
-    }
-    WriteHackStatus()
-    await ns.ns.asleep(Config.loopDelay)
+    // let targetNextStep:TargetNextStep = target.getNextStep()
+    // switch (targetNextStep.state) {
+    //   case 'prep_ready':
+    //     // fall through
+    //   case 'hack_ready':
+    //     // batch is ready to run
+    //     target.runOnDeckBatch()
+    //     break
+    //   case 'prep_running':
+    //   case 'hack_running':  // TODO target is full of hacking - can we run another target?
+    //   case 'unknown':
+    //     // fall through, do nothing for these cases        
+    // }
+    // WriteHackStatus()
+    await ns.asleep(Config.loopDelay)
   }
 }
 

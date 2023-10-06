@@ -1,4 +1,4 @@
-import { BatchAction, GrowAction, HackAction, WeakenAction, Config, Target } from 'scripts/hack/batch/lib';
+import { GrowAction, HackAction, WeakenAction, Config, Target } from "scripts/hack/batch/lib/index";
 import { WaitPids, FormatTime } from "scripts/lib/utils"
 
 import { ns } from "scripts/lib/NS"
