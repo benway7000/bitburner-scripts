@@ -160,9 +160,10 @@ export async function main(ns) {
 
     // Farm XP for a bit
     // TODO need singularity to make this not keep re-clicking it
-    // if (ns.getPlayer().skills.hacking < 100) {
-    //   await TryRunScript(ns, "/scripts/autostart/study.js", ["silent"])
-    // }
+    if (ns.getPlayer().skills.hacking < 100) {
+      RunHomeSingletonScript(ns, "/scripts/autostart/study.js", 1, ["silent"])
+      //   await TryRunScript(ns, "/scripts/autostart/study.js", ["silent"])
+    }
 
     // RunHackScript(ns, sitrep, "/scripts/hack/loop_hack/v5.js")
     RunHomeSingletonScript(ns, "/scripts/hack/xp/xp_loop_v1.js", 1, [0.2])
