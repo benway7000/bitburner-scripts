@@ -1,6 +1,7 @@
 import { GetTopHackServers } from "scripts/lib/metrics-simple"
 import { FormatTime, HasSingularity } from "scripts/lib/utils"
-import { Player } from "@player"
+import { FracturedJson } from "scripts/lib/FracturedJson"
+
 
 const state = {
   stop: false,
@@ -149,8 +150,11 @@ export async function main(ns) {
   // ns.tprint(`ns.player: ${JSON.stringify(Player.sourceFileLvl(4))}`)
 
   // =========================================
-  ns.tprint(`HasSingularity: ${HasSingularity(ns)}`)
+  // ns.tprint(`HasSingularity: ${HasSingularity(ns)}`)
   // =========================================
+  FracturedJson.InitializeFracturedJson()
+  ns.tprint(FracturedJson.formatter.Serialize(ns.getPlayer()))
+
   // =========================================
   // =========================================
   // =========================================

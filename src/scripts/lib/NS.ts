@@ -1,5 +1,7 @@
 import { NS } from '@ns';
 
+export { NS }
+
 export class ns {
   static ns:NS
 }

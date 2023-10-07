@@ -1,6 +1,7 @@
 import { WaitPids, LogMessage, RunHomeSingletonScript } from "scripts/lib/utils"
 import { GetSitRep } from "scripts/util/sitrep"
 import { GetTopHackServers } from "scripts/lib/metrics-simple"
+import { FracturedJson } from "scripts/lib/FracturedJson"
 
 /*
 Brainstorm of what's needed for a "main brain" script
@@ -41,6 +42,8 @@ Brainstorm of what's needed for a "main brain" script
 export async function main(ns) {
   ns.disableLog("ALL")
   ns.enableLog("exec")
+
+  FracturedJson.InitializeFracturedJson()
 
   let pid = ns.getRunningScript(
     "/scripts/hud/custom-HUD-v2.js",
@@ -97,6 +100,11 @@ export async function main(ns) {
       "I.I.I.I",
       "avmnite-02h",
       "run4theh111z",
+      "nwo",
+      "omnitek",
+      "clarkinc",
+      "4sigma",
+      "b-and-a",
       //'w0r1d_d43m0n',
       // 'millenium-fitness',
       // 'powerhouse-fitness',
@@ -165,9 +173,13 @@ export async function main(ns) {
       //   await TryRunScript(ns, "/scripts/autostart/study.js", ["silent"])
     }
 
+    // run xp on joesguns
+    // RunHomeSingletonScript(ns, "/scripts/hack/xp/xp_loop_v1.js", 1, [0.2])
+    RunHomeSingletonScript(ns, "/scripts/hack/xp/xp.js", 1, ["auto"])
+
     // RunHackScript(ns, sitrep, "/scripts/hack/loop_hack/v5.js")
-    RunHomeSingletonScript(ns, "/scripts/hack/xp/xp_loop_v1.js", 1, [0.2])
-    RunHomeSingletonScript(ns, "/scripts/hack/batch/batch_v3.js", 1, ["auto"])
+    // RunHomeSingletonScript(ns, "/scripts/hack/batch/batch_v3.js", 1, ["auto"])
+    RunHomeSingletonScript(ns, "/scripts/hack/batch/batcher.js", 1, ["auto"])
 
     // Run manager on joesguns until we have all ports open
     // if (

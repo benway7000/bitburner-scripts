@@ -1,4 +1,4 @@
-import { GetAllServers } from "scripts/lib/utils.js";
+import { GetAllServers, WaitPids } from "scripts/lib/utils.js";
 import { RunScript, MemoryMap } from "scripts/lib/ram.js";
 
 const XP_GROW_SCRIPT = "scripts/hack/xp/xp-grow.js"
@@ -36,7 +36,7 @@ export async function main(ns) {
 	WeakenTarget(ns, JOESGUNS)
 	let weakenTime = Date.now()
 	
-    await AdjustUsage(ns, pct);
+	await AdjustUsage(ns, pct);
     // ns.print('Current share power: ' + ns.getSharePower());
 
 	for (; ;) {
@@ -119,11 +119,12 @@ async function AdjustUsage(ns, pct) {
 	}
 }
 
-function WeakenTarget(ns, target) {
+async function WeakenTarget(ns, target) {
 	const minSec = ns.getServerMinSecurityLevel(target)
 	const sec = ns.getServerSecurityLevel(target)
 	let weakenThreads = Math.ceil((sec - minSec) / ns.weakenAnalyze(1))
 	if (weakenThreads > 0) {
-		RunScript(ns, XP_WEAKEN_SCRIPT, weakenThreads, [target, performance.now(), true], MAX_SPREAD, true);
+		const { pids } = RunScript(ns, XP_WEAKEN_SCRIPT, weakenThreads, [target, performance.now(), true], MAX_SPREAD, true);
+		await WaitPids(ns, pids, ns.getWeakenTime(target)-100)
 	}
 }

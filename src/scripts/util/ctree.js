@@ -20,7 +20,7 @@ export async function main(ns) {
   }
 
   let cycle_reports = 0
-  for (const [server, server_state] of Object.entries(hack_report.serverStates)) {
+  for (const [server, server_state] of Object.entries(hack_report.targetStates)) {
     // ns.tprint(`server_state: ${server_state}`)
     if (server_state.cycles != undefined) {
       for (let cycle of server_state.cycles.sort((a, b) => a.cycle_number - b.cycle_number)) {

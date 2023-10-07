@@ -52,7 +52,7 @@ const config = {
       loopDelay: this.loopDelay,
       currentTargets: this.getCurrentTargets(ns),
       targetAdjust: this.targetAdjust,
-      serverStates: this.serverStates,
+      targetStates: this.serverStates,
     }
   },
   resetConfig: function () {

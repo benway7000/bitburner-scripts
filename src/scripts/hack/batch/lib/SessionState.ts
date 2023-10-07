@@ -6,17 +6,21 @@ export class SessionState {
   static targets: Target[] = []
 
   static addTarget(target: Target) {
-    this.targets.push(target)
+    if (this.targets.indexOf(target) == -1) {
+      this.targets.push(target)
+    }
   }
 
   static rmTarget(target: Target) {
     let index = this.targets.indexOf(target)
-    this.targets.splice(index, 1)
+    if (index > -1) {
+      this.targets.splice(index, 1)
+    }
   }
 
   static getCurrentTargets() {
     // return list of active targets
-    return SessionState.targets
+    return this.targets
   }
 
   static getTarget(target: Target) {
@@ -31,11 +35,15 @@ export class SessionState {
 
   static getAllBatches() {
     // return all batches across all targets
-    return SessionState.targets.reduce((accum, cur) => { accum.push(...cur.runningHackBatches); return accum }, new Array<Batch>())
+    return SessionState.targets.reduce((accum, cur) => {
+      accum.push(...cur.runningHackBatches)
+      cur.runningPrepBatch ? accum.push(cur.runningPrepBatch) : {}
+      return accum
+    }, new Array<Batch>())
   }
 
   static notifyTargetBatchesChange(target: Target) {
-    if (target.runningHackBatches.length == 0) {
+    if (target.runningHackBatches.length == 0 && !target.runningPrepBatch) {
       // target has no more batches, so remove it from our list of targets
       this.rmTarget(target)
     }
@@ -43,13 +51,17 @@ export class SessionState {
 
   static getJSON() {
     return {
-      hack_type: "batch",
-      currentTargets: this.getCurrentTargets(),
+      hack_type: "batcher",
+      currentTargets: this.getCurrentTargets().map(t => t.hostname),
       currentActiveCycles: this.getAllBatches().length,
-      serverStates: JSON.stringify(this.targets, null, 2),
+      targetStates: this.targets,
+      // batches: this.getAllBatches(),
     }
   }
 
+  static clearSessionState() {
+    this.targets = []
+  }
 
 
 }

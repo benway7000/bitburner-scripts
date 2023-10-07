@@ -1,6 +1,7 @@
-import { NS } from '@ns';
-import { Config, SessionState, Target, TargetNextStep } from "scripts/hack/batch/lib/index";
-import { InitializeNS, ns } from "scripts/lib/NS";
+import { Config } from "scripts/hack/batch/lib/Config";
+import { Target, TargetNextStep } from "scripts/hack/batch/lib/Target";
+import { SessionState } from "scripts/hack/batch/lib/SessionState"
+import { NS, InitializeNS, ns } from "scripts/lib/NS";
 import { GetTopHackServers } from "scripts/lib/metrics-simple";
 
 const SCRIPT_NAME_PREFIX = "batcher"
@@ -39,6 +40,7 @@ export async function main(ns: NS) {
   ns.disableLog("ALL")
 
   InitializeNS(ns)
+  SessionState.clearSessionState()
 
   // This script calls 1-liner worker scripts, the following commands create those scripts on the current host
   await CreateScript("hack")
@@ -47,29 +49,31 @@ export async function main(ns: NS) {
 
   // Open the tail window when the script starts
   // ns.tail();
-  // await MainLoop()
+  await MainLoop()
 }
 
-async function MainLoop(ns:NS) {
+async function MainLoop() {
   while (true) {
-    // let topTargetHostname = GetTopTargetHostname()
-    // let target = SessionState.getTargetByHostname(topTargetHostname) ?? new Target(topTargetHostname)
+    let topTargetHostname = GetTopTargetHostname()
+    let target = SessionState.getTargetByHostname(topTargetHostname) ?? new Target(topTargetHostname)
 
-    // let targetNextStep:TargetNextStep = target.getNextStep()
-    // switch (targetNextStep.state) {
-    //   case 'prep_ready':
-    //     // fall through
-    //   case 'hack_ready':
-    //     // batch is ready to run
-    //     target.runOnDeckBatch()
-    //     break
-    //   case 'prep_running':
-    //   case 'hack_running':  // TODO target is full of hacking - can we run another target?
-    //   case 'unknown':
-    //     // fall through, do nothing for these cases        
-    // }
-    // WriteHackStatus()
-    await ns.asleep(Config.loopDelay)
+    let targetNextStep:TargetNextStep = target.getNextStep()
+    // ns.ns.print(`MainLoop: next step on ${target.hostname} is ${JSON.stringify(targetNextStep, null, 2)}`)
+    switch (targetNextStep.state) {
+      case 'prep_ready':
+        // fall through
+      case 'hack_ready':
+        // batch is ready to run
+        ns.ns.print(`MainLoop: running a batch: target: ${target.hostname} #${target.onDeckBatch?.batchNumber} type:${target.onDeckBatch?.batchType}. total batches on target: ${target.getRunningBatchCount()}`)
+        target.runOnDeckBatch()
+        break
+      case 'prep_running':
+      case 'hack_running':  // TODO target is full of hacking - can we run another target?
+      case 'unknown':
+        // fall through, do nothing for these cases        
+    }
+    WriteHackStatus()
+    await ns.ns.asleep(Config.loopDelay)
   }
 }
 
@@ -83,7 +87,7 @@ function GetTopTargetHostname():string {
 
 async function CreateScript(command:string) {
   ns.ns.write(
-    SCRIPT_NAME_PREFIX + command + ".js",
+    Config.scriptPrefix + command + ".js",
     "export async function main(ns) { await ns.asleep(ns.args[0]); await ns." + command + "(ns.args[1]) }",
     "w"
   )

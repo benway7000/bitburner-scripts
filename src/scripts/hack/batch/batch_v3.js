@@ -78,12 +78,12 @@ const config = {
   },
   getConfigJSON: function (ns) {
     return {
-      hack_type: "batch",
+      hack_type: SCRIPT_NAME_PREFIX,
       loopDelay: this.loopDelay,
       currentTargets: this.getCurrentTargets(ns),
       currentActiveCycles: getActiveCyclesCount(),
       targetAdjust: this.targetAdjust,
-      serverStates: this.serverStates,
+      targetStates: this.serverStates,
     }
   },
   resetConfig: function () {

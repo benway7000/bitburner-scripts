@@ -1,5 +1,7 @@
 import { pctColor, PrintTable, DefaultStyle, ColorPrint } from "scripts/lib/tables"
 import { GetSymbolFromServer, HasFormulas, FormatTime, Weight } from "scripts/lib/utils"
+import { SessionState } from "scripts/hack/batch/lib/SessionState"
+
 
 const FORCED_HACK_LEVEL = undefined
 
@@ -124,16 +126,22 @@ export async function main(ns) {
     if (hack_report.currentTargets.includes(server.name)) {
       if (hack_report.hack_type === "loop") {
         // loop hack results have a phase
-        hacking = `${hack_report.serverStates[server.name].phase.toUpperCase()[0]} ${FormatTime(
-          hack_report.serverStates[server.name].expectedDuration
-        )} (${FormatTime(hack_report.serverStates[server.name].expectedTime - Date.now())})`
+        hacking = `${hack_report.targetStates[server.name].phase.toUpperCase()[0]} ${FormatTime(
+          hack_report.targetStates[server.name].expectedDuration
+        )} (${FormatTime(hack_report.targetStates[server.name].expectedTime - Date.now())})`
 
-      } else if (hack_report.hack_type === "batch") {
-        // batch hack results have cycles
-        let cycles = hack_report.serverStates[server.name]?.cycles
-        cycles = cycles.filter(c => !["complete", "stopped"].includes(c.cycle_state)).sort((a,b) => (b.cycle_number - a.cycle_number))
+      } else if (hack_report.hack_type === "batch_v3") {
+        // batch_v3 hack results have cycles
+        let cycles = hack_report.targetStates[server.name]?.cycles
+        cycles = cycles.filter(c => !["complete", "stopped"].includes(c.cycle_state)).sort((a, b) => (b.cycle_number - a.cycle_number))
         if (cycles.length > 0) {
           hacking = `${cycles.length}C. [${FormatTime(cycles[cycles.length - 1].batch.expectedDuration)}] (${FormatTime(cycles[cycles.length - 1].batch.expectedTime - Date.now())})`
+        }
+      } else if (hack_report.hack_type === "batcher") {
+        // batcher has runningHackBatches, use SessionState
+        let runningHackBatches = SessionState.getTargetByHostname(server.name)?.runningHackBatches
+        if (runningHackBatches.length > 0) {
+          hacking = `${runningHackBatches.length}B. [${FormatTime(runningHackBatches[0].expectedDuration)}] (${FormatTime(runningHackBatches[0].expectedEndTime - Date.now())})`
         }
       }
     }
