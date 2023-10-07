@@ -1,4 +1,5 @@
-import { NS, InitializeNS, ns } from "scripts/lib/NS";
+import { NS } from '@ns';
+import { InitializeNS, ns } from "scripts/lib/NS";
 
 const MAX_SECURITY_DRIFT = 3 // This is how far from minimum security we allow the server to be before weakening
 const MAX_MONEY_DRIFT_PCT = 0.1 // This is how far from 100% money we allow the server to be before growing (1-based percentage)
@@ -13,6 +14,7 @@ const SCRIPT_PREFIX = "batcher_"
 const FINISHED_BATCH_LOGGING_SAMPLE_RATE = 0.2
 
 const CONFIG_FILE ="/data/batcher_config.txt" 
+export const BATCHER_PORT = 1
 
 type BatcherConfig = {
   maxTriesPerLoop: number
@@ -57,24 +59,30 @@ export class Config {
 
 
   static getCurrentConfig() {
-    return JSON.stringify(this, null, 2)
+    return JSON.stringify(Object.assign({}, this), null, 2)
   }
 
   static loadConfig(config:Partial<BatcherConfig>) {
     Object.assign(this, config)
   }
 
-  static loadConfigFromFile() {
-    let fileConfig:Partial<BatcherConfig> = JSON.parse(ns.ns.read(CONFIG_FILE))
-    this.loadConfig(fileConfig)
+  static loadConfigFromFile():boolean {
+    if (ns.ns.fileExists(CONFIG_FILE)) {
+      let fileConfig:Partial<BatcherConfig> = JSON.parse(ns.ns.read(CONFIG_FILE))
+      this.loadConfig(fileConfig)
+      return true
+    }
+    return false
   }
 
   static writeConfigToFile() {
-    ns.ns.write(CONFIG_FILE, JSON.stringify(this, null, 2), "w")
+    ns.ns.write(CONFIG_FILE, JSON.stringify(Object.assign({}, this), null, 2), "w")
   }
 
   static {
-    this.loadConfig(defaultConfig)
+    if (!this.loadConfigFromFile()) {
+      this.loadConfig(defaultConfig)
+    }
   }
 }
 
@@ -93,7 +101,10 @@ export async function main(ns: NS) {
     ns.tprint(`Writing config to ${CONFIG_FILE}`)
     Config.writeConfigToFile()
   } else if (cmd === "reload") {
+    // talk to batcher.ts
     ns.tprint(`Reloading config from ${CONFIG_FILE}`)
+    // let reloadCmd = {command: "reload"}
+    // while (!ns.tryWritePort(BATCHER_PORT, JSON.stringify(reloadCmd))) await ns.asleep(1000)
     Config.loadConfigFromFile()
     ns.tprint(`New configuration is ${Config.getCurrentConfig()}`)
   }

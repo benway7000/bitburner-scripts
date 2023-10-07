@@ -1,6 +1,6 @@
-import { Config } from "scripts/hack/batch/lib/Config";
-import { Target } from "scripts/hack/batch/lib/Target";
-import { SessionState } from "scripts/hack/batch/lib/SessionState"
+import { Config } from "scripts/hack/batch/Config";
+import { Target } from "scripts/hack/batch/Target";
+import { SessionState } from "scripts/hack/batch/SessionState"
 import { WaitPids, FormatTime } from "scripts/lib/utils"
 import { RunScript, MemoryMap } from "scripts/lib/ram"
 

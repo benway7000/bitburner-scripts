@@ -1,7 +1,8 @@
-import { Config } from "scripts/hack/batch/lib/Config";
-import { Target, TargetNextStep } from "scripts/hack/batch/lib/Target";
-import { SessionState } from "scripts/hack/batch/lib/SessionState"
-import { NS, InitializeNS, ns } from "scripts/lib/NS";
+import { NS } from '@ns';
+import { InitializeNS, ns } from "scripts/lib/NS";
+import { Config, BATCHER_PORT } from "scripts/hack/batch/Config";
+import { Target, TargetNextStep } from "scripts/hack/batch/Target";
+import { SessionState } from "scripts/hack/batch/SessionState"
 import { GetTopHackServers } from "scripts/lib/metrics-simple";
 
 const SCRIPT_NAME_PREFIX = "batcher"
@@ -54,6 +55,7 @@ export async function main(ns: NS) {
 
 async function MainLoop() {
   while (true) {
+    // CheckForConfigCommand()
     let topTargetHostname = GetTopTargetHostname()
     let target = SessionState.getTargetByHostname(topTargetHostname) ?? new Target(topTargetHostname)
 
@@ -76,6 +78,12 @@ async function MainLoop() {
     await ns.ns.asleep(Config.loopDelay)
   }
 }
+
+// function CheckForConfigCommand() {
+//   while (ns.ns.peek(BATCHER_PORT)) {
+//     let data = JSON.parse(ns.ns.readPort(BATCHER_PORT))
+//   }
+// }
 
 function WriteHackStatus() {
   ns.ns.write("/data/hack.txt", JSON.stringify(SessionState.getJSON(), null, 2), "w")

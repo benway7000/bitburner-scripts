@@ -1,22 +1,21 @@
+import { InitializeNS, ns } from "scripts/lib/NS";
 import { GetAllServers, WaitPids } from "scripts/lib/utils.js";
 import { RunScript, MemoryMap } from "scripts/lib/ram.js";
+import { Config } from "scripts/hack/xp/Config";
 
 const XP_GROW_SCRIPT = "scripts/hack/xp/xp-grow.js"
 const XP_WEAKEN_SCRIPT = "scripts/hack/xp/xp-weaken.js"
 const XP_SCRIPT = "scripts/hack/xp/xp.js"
-const JOESGUNS = "joesguns"
 
-const MAX_SPREAD = 30
 
 /** @param {NS} ns **/
 export async function main(ns) {
 	ns.disableLog('ALL');
 
-	let [pct = 0.95] = ns.args;
-
-	if (ns.args.includes('auto')) {
-		pct = AdjustPct(ns)
-	}
+	InitializeNS(ns)
+	ns.print("XP starting")
+	let pct = AdjustPct(ns)
+	ns.print(`XP first adjust ${pct}`)
 
 	if (ns.args.includes('stop')) {
 		const data = FindInstances(ns)
@@ -33,7 +32,7 @@ export async function main(ns) {
 	}
 
 	// weaken once first
-	WeakenTarget(ns, JOESGUNS)
+	WeakenTarget(ns, Config.target)
 	let weakenTime = Date.now()
 	
 	await AdjustUsage(ns, pct);
@@ -48,7 +47,7 @@ export async function main(ns) {
 		await ns.sleep(5000);
 		if (Date.now() - weakenTime > 5 * 60 * 1000) {
 			// weaken double-check once after 5 minutes
-			WeakenTarget(ns, JOESGUNS)
+			WeakenTarget(ns, Config.target)
 			weakenTime = -1
 		}
 	}
@@ -73,6 +72,10 @@ function FindInstances(ns) {
 }
 
 function AdjustPct(ns) {
+	if (Config.xpRamPct != "auto") {
+		// ns.print(`XP: AdjustPct is now ${Config.xpRamPct}`)
+		return Config.xpRamPct
+	}
 	let pct = 0
 	const ram = new MemoryMap(ns, true);
 	// if (ram.total < 5000){
@@ -115,7 +118,7 @@ async function AdjustUsage(ns, pct) {
 	if (xpRamPct < pct) {
 		let missingThreads = targetThreads - xpThreads;
 		ns.print('Attempting to start ' + missingThreads + ' xp threads. xpRamPct: ' + xpRamPct + '%  pct:' + pct + '%');
-		RunScript(ns, XP_GROW_SCRIPT, missingThreads, [JOESGUNS, performance.now(), true], MAX_SPREAD, true);
+		RunScript(ns, XP_GROW_SCRIPT, missingThreads, [Config.target, performance.now(), true], Config.maxSpread, true);
 	}
 }
 

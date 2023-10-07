@@ -1,7 +1,7 @@
 import { ns } from "scripts/lib/NS"
-import { Batch, HackBatch, PrepBatch } from "scripts/hack/batch/lib/Batch"
-import { Config } from "scripts/hack/batch/lib/Config"
-import { SessionState } from "scripts/hack/batch/lib/SessionState"
+import { Batch, HackBatch, PrepBatch } from "/scripts/hack/batch/Batch"
+import { Config } from "scripts/hack/batch/Config"
+import { SessionState } from "scripts/hack/batch/SessionState"
 import { MemoryMap } from "/scripts/lib/ram"
 
 type TARGET_STATES = "prep_ready" | "prep_running" | "hack_ready" | "hack_running" | "unknown"
