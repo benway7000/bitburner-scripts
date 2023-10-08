@@ -44,7 +44,7 @@ export async function main(ns) {
 		pct = AdjustPct(ns)
 		await AdjustUsage(ns, pct);
 		// ns.print('Current share power: ' + ns.getSharePower());
-		await ns.sleep(5000);
+		await ns.asleep(5000);
 		if (Date.now() - weakenTime > 5 * 60 * 1000) {
 			// weaken double-check once after 5 minutes
 			WeakenTarget(ns, Config.target)
@@ -127,7 +127,7 @@ async function WeakenTarget(ns, target) {
 	const sec = ns.getServerSecurityLevel(target)
 	let weakenThreads = Math.ceil((sec - minSec) / ns.weakenAnalyze(1))
 	if (weakenThreads > 0) {
-		const { pids } = RunScript(ns, XP_WEAKEN_SCRIPT, weakenThreads, [target, performance.now(), true], MAX_SPREAD, true);
+		const { pids } = RunScript(ns, XP_WEAKEN_SCRIPT, weakenThreads, [target, performance.now(), true], Config.maxSpread, true);
 		await WaitPids(ns, pids, ns.getWeakenTime(target)-100)
 	}
 }

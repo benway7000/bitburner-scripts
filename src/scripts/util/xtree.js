@@ -1,6 +1,6 @@
 import { pctColor, PrintTable, DefaultStyle, ColorPrint } from "scripts/lib/tables"
 import { GetSymbolFromServer, HasFormulas, FormatTime, Weight } from "scripts/lib/utils"
-import { SessionState } from "scripts/hack/batch/lib/SessionState"
+import { SessionState } from "scripts/hack/batch/SessionState"
 
 
 const FORCED_HACK_LEVEL = undefined
@@ -140,7 +140,7 @@ export async function main(ns) {
       } else if (hack_report.hack_type === "batcher") {
         // batcher has runningHackBatches, use SessionState
         let runningHackBatches = SessionState.getTargetByHostname(server.name)?.runningHackBatches
-        if (runningHackBatches.length > 0) {
+        if (runningHackBatches?.length > 0) {
           hacking = `${runningHackBatches.length}B. [${FormatTime(runningHackBatches[0].expectedDuration)}] (${FormatTime(runningHackBatches[0].expectedEndTime - Date.now())})`
         }
       }

@@ -80,9 +80,9 @@ export class Config {
   }
 
   static {
-    if (!this.loadConfigFromFile()) {
+    // if (!this.loadConfigFromFile()) {
       this.loadConfig(defaultConfig)
-    }
+    // }
   }
 }
 

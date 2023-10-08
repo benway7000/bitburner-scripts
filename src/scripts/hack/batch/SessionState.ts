@@ -35,7 +35,7 @@ export class SessionState {
 
   static getAllBatches() {
     // return all batches across all targets
-    return SessionState.targets.reduce((accum, cur) => {
+    return this.targets.reduce((accum, cur) => {
       accum.push(...cur.runningHackBatches)
       cur.runningPrepBatch ? accum.push(cur.runningPrepBatch) : {}
       return accum
