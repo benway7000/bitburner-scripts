@@ -1,10 +1,9 @@
+import { NS } from '@ns';
 import { Config } from "scripts/hack/batch/Config";
 import { Target } from "scripts/hack/batch/Target";
 import { SessionState } from "scripts/hack/batch/SessionState"
 import { WaitPids, FormatTime } from "scripts/lib/utils"
 import { RunScript, MemoryMap } from "scripts/lib/ram"
-
-import { ns } from "scripts/lib/NS"
 
 export const BATCH_STATES = {
   PREP: "prep",
@@ -59,7 +58,7 @@ export class Batch {
   expectedEndTime: number = 0
   result: any
 
-  constructor(targetHostname: string, batchNumber: number, batchType: BatchType) {
+  constructor(ns:NS, targetHostname: string, batchNumber: number, batchType: BatchType) {
     this.targetHostname = targetHostname
     this.batchNumber = batchNumber
     this.batchType = batchType
@@ -69,34 +68,37 @@ export class Batch {
     this.growAction = new GrowAction("grow", "", -1)
     this.hackAction = new HackAction("hack", "", -1)
 
-    this.CalcBatch()
+    let ram = new MemoryMap(ns)
+    do {
+      this.CalcBatch(ns)
+      if (this.batchType === "prep") break // don't scale prep batches
+      if (ram.available >= this.ramStats.totalRamUsage) break // we can run it, break
+      if (this.hackPct < 0.05) break // at least do 1% even if not enough ram
+
+      // reduce hack pct, then redo calc
+      this.hackPct = Math.max(this.hackPct - 0.05, 0.01)
+    } while (ram.available < this.ramStats.totalRamUsage)
+    if (this.hackPct != Config.defaultHackPct) ns.print(`Batch re-calculated with hackPct ${this.hackPct}`)
   }
 
   IsPrep() {
     return this.batchType === "prep"
   }
 
-  getRamUsage(): number {
-    return this.ramStats.growRamUsage  +
-      this.ramStats.hackRamUsage +
-      this.ramStats.weaken1RamUsage +
-      this.ramStats.weaken2RamUsage
-  }
-
-  getServerState():ServerState {
+  getServerState(ns:NS):ServerState {
     // Money
-    let money = Math.max(ns.ns.getServerMoneyAvailable(this.targetHostname), 1)
-    let maxMoney = ns.ns.getServerMaxMoney(this.targetHostname)
+    let money = Math.max(ns.getServerMoneyAvailable(this.targetHostname), 1)
+    let maxMoney = ns.getServerMaxMoney(this.targetHostname)
 
     // Security
-    const minSec = ns.ns.getServerMinSecurityLevel(this.targetHostname)
-    const sec = ns.ns.getServerSecurityLevel(this.targetHostname)
+    const minSec = ns.getServerMinSecurityLevel(this.targetHostname)
+    const sec = ns.getServerSecurityLevel(this.targetHostname)
     return {
       money, maxMoney, minSec, sec
     }
   }
 
-  CalcBatch() {
+  CalcBatch(ns:NS) {
     // HWGW. assume server is prepped (max money, sec-minSec = 0)
     //                    |= hack ====================|
     // |=weaken 1======================================|
@@ -111,7 +113,7 @@ export class Batch {
 
 
     
-    this.initialState = this.getServerState()
+    this.initialState = this.getServerState(ns)
     const {
       money, maxMoney, minSec, sec
     } = this.initialState
@@ -124,26 +126,26 @@ export class Batch {
     //   this.batchType = "hack"
     // }
 
-    let overallDuration = this.expectedDuration = ns.ns.getWeakenTime(this.targetHostname) + 2 * Config.batchPhaseDelay
+    let overallDuration = this.expectedDuration = ns.getWeakenTime(this.targetHostname) + 2 * Config.batchPhaseDelay
     this.expectedEndTime = Date.now() + overallDuration
 
     // Hack lands first
     // Hacking (limited by pct)
     if (this.batchType === "hack") {
       this.hackAction = new HackAction("hack", this.targetHostname, this.batchNumber)
-      this.hackAction.duration = ns.ns.getHackTime(this.targetHostname)
+      this.hackAction.duration = ns.getHackTime(this.targetHostname)
       this.hackAction.hackMoneyRemoved = money * this.hackPct
-      this.hackAction.threads = Math.floor(ns.ns.hackAnalyzeThreads(this.targetHostname, this.hackAction.hackMoneyRemoved))
-      this.hackAction.securityChange = ns.ns.hackAnalyzeSecurity(this.hackAction.threads)
+      this.hackAction.threads = Math.floor(ns.hackAnalyzeThreads(this.targetHostname, this.hackAction.hackMoneyRemoved))
+      this.hackAction.securityChange = ns.hackAnalyzeSecurity(this.hackAction.threads)
       this.hackAction.endTime = overallDuration - 3 * Config.batchPhaseDelay
       this.hackAction.startTime = this.hackAction.endTime - this.hackAction.duration
     }
 
     // Weaken1
     this.weaken1Action = new WeakenAction("weaken", this.targetHostname, this.batchNumber)
-    this.weaken1Action.duration = ns.ns.getWeakenTime(this.targetHostname)
+    this.weaken1Action.duration = ns.getWeakenTime(this.targetHostname)
     this.weaken1Action.securityToRemove = startingExtraSecurity + this.hackAction.securityChange
-    this.weaken1Action.threads = Math.ceil(Config.weakenThreadMult * this.weaken1Action.securityToRemove / ns.ns.weakenAnalyze(1))
+    this.weaken1Action.threads = Math.ceil(Config.weakenThreadMult * this.weaken1Action.securityToRemove / ns.weakenAnalyze(1))
     this.weaken1Action.endTime = overallDuration - 2 * Config.batchPhaseDelay
     this.weaken1Action.startTime = this.weaken1Action.endTime - this.weaken1Action.duration
 
@@ -151,12 +153,12 @@ export class Batch {
     // grow if server is not at max money or we are hacking (ie do not grow if server is at max and we are not hacking, ie prep)
     if (maxMoney - money > 0 || (this.hackAction.threads)) {
       this.growAction = new GrowAction("grow", this.targetHostname, this.batchNumber)
-      this.growAction.duration = ns.ns.getGrowTime(this.targetHostname)
+      this.growAction.duration = ns.getGrowTime(this.targetHostname)
 
       this.growAction.threads = Math.ceil(
-        ns.ns.growthAnalyze(this.targetHostname, (Config.growThreadMult * maxMoney) / (money - this.hackAction.hackMoneyRemoved))
+        ns.growthAnalyze(this.targetHostname, (Config.growThreadMult * maxMoney) / (money - this.hackAction.hackMoneyRemoved))
       )
-      this.growAction.securityChange = ns.ns.growthAnalyzeSecurity(this.growAction.threads)
+      this.growAction.securityChange = ns.growthAnalyzeSecurity(this.growAction.threads)
       this.growAction.endTime = overallDuration - 1 * Config.batchPhaseDelay
       this.growAction.startTime = this.growAction.endTime - this.growAction.duration
     }
@@ -165,9 +167,9 @@ export class Batch {
     let weaken2SecurityToRemove = this.growAction.securityChange
     if (weaken2SecurityToRemove > 0) {
       this.weaken2Action = new WeakenAction("weaken", this.targetHostname, this.batchNumber)
-      this.weaken2Action.duration = ns.ns.getWeakenTime(this.targetHostname)
+      this.weaken2Action.duration = ns.getWeakenTime(this.targetHostname)
       this.weaken2Action.securityToRemove = weaken2SecurityToRemove
-      this.weaken2Action.threads = Math.ceil(Config.weakenThreadMult * this.weaken2Action.securityToRemove / ns.ns.weakenAnalyze(1))
+      this.weaken2Action.threads = Math.ceil(Config.weakenThreadMult * this.weaken2Action.securityToRemove / ns.weakenAnalyze(1))
       this.weaken2Action.endTime = overallDuration
       this.weaken2Action.startTime = this.weaken2Action.endTime - this.weaken2Action.duration
     }
@@ -185,34 +187,34 @@ export class Batch {
     }
   }
 
-  async RunBatch() {
+  async RunBatch(ns:NS) {
     if (this.weaken1Action.threads) {
-      this.weaken1Action.RunAction()
+      this.weaken1Action.RunAction(ns)
     }
     if (this.weaken2Action.threads) {
-      this.weaken2Action.RunAction()
+      this.weaken2Action.RunAction(ns)
     }
     if (this.growAction.threads) {
-      this.growAction.RunAction()
+      this.growAction.RunAction(ns)
     }
     if (this.hackAction.threads) {
-      this.hackAction.RunAction()
+      this.hackAction.RunAction(ns)
     }
-    await WaitPids(ns.ns, this.getAllPids(), this.weaken1Action.endTime - 2 * Config.batchPhaseDelay)
+    await WaitPids(ns, this.getAllPids(), this.weaken1Action.endTime - 2 * Config.batchPhaseDelay)
 
     // report results
-    this.finalState = this.getServerState()
+    this.finalState = this.getServerState(ns)
     this.result = {
-      endingMoneyShort: ns.ns.getServerMaxMoney(this.targetHostname) - ns.ns.getServerMoneyAvailable(this.targetHostname),
-      endingSecurityExtra: ns.ns.getServerSecurityLevel(this.targetHostname) - ns.ns.getServerMinSecurityLevel(this.targetHostname)
+      endingMoneyShort: ns.getServerMaxMoney(this.targetHostname) - ns.getServerMoneyAvailable(this.targetHostname),
+      endingSecurityExtra: ns.getServerSecurityLevel(this.targetHostname) - ns.getServerMinSecurityLevel(this.targetHostname)
     }
     if (this.result.endingMoneyShort != 0 || this.result.endingSecurityExtra != 0) {
       this.result.misCalc = true
       // write to a file
-      ns.ns.write("/data/hack_miscalcs.txt", JSON.stringify(this, null, 2), "a")
+      ns.write("/data/hack_miscalcs.txt", JSON.stringify(this, null, 2), "a")
     }
     if (Math.random() < Config.finishedBatchLoggingSampleRate) {
-      ns.ns.write("/data/hack_finished_batches.txt", JSON.stringify(this, null, 2) + "\n", "a")
+      ns.write("/data/hack_finished_batches.txt", JSON.stringify(this, null, 2) + "\n", "a")
     }
 
     // notify someone that the batch finished (need to remove from the target's batches list, what else?)
@@ -227,15 +229,15 @@ export class Batch {
 }
 
 export class PrepBatch extends Batch {
-  constructor(targetHostname: string, batchNumber: number) {
-    super(targetHostname, batchNumber, "prep")
+  constructor(ns:NS, targetHostname: string, batchNumber: number) {
+    super(ns, targetHostname, batchNumber, "prep")
   }  
 }
 
 
 export class HackBatch extends Batch {
-  constructor(targetHostname: string, batchNumber: number) {
-    super(targetHostname, batchNumber, "hack")
+  constructor(ns:NS, targetHostname: string, batchNumber: number) {
+    super(ns, targetHostname, batchNumber, "hack")
   }  
 }
 
@@ -264,9 +266,9 @@ export class BatchAction {
     this.batchNumber = batchNumber
   }
 
-  RunAction() {
+  RunAction(ns:NS) {
     let { pids, fired } = RunScript(
-      ns.ns,
+      ns,
       Config.scriptPrefix + this.command + ".js",
       this.threads,
       [this.startTime, this.targetHostname, this.batchNumber],

@@ -1,4 +1,4 @@
-import { ns } from "scripts/lib/NS"
+import { NS } from '@ns';
 import { Batch, HackBatch, PrepBatch } from "/scripts/hack/batch/Batch"
 import { Config } from "scripts/hack/batch/Config"
 import { SessionState } from "scripts/hack/batch/SessionState"
@@ -23,15 +23,15 @@ export class Target {
     this.hostname = hostname
   }
 
-  IsPrepped() {
-    let money = ns.ns.getServerMoneyAvailable(this.hostname)
+  IsPrepped(ns:NS) {
+    let money = ns.getServerMoneyAvailable(this.hostname)
     if (money <= 0) money = 1 // division by zero safety
-    const maxMoney = ns.ns.getServerMaxMoney(this.hostname)
+    const maxMoney = ns.getServerMaxMoney(this.hostname)
     if ((maxMoney * Config.maxMoneyDriftPct) > money) return false
 
     // Security
-    const minSec = ns.ns.getServerMinSecurityLevel(this.hostname)
-    const sec = ns.ns.getServerSecurityLevel(this.hostname)
+    const minSec = ns.getServerMinSecurityLevel(this.hostname)
+    const sec = ns.getServerSecurityLevel(this.hostname)
     if ((sec - minSec) > Config.maxSecurityDrift) return false
     return true
   }
@@ -70,10 +70,10 @@ export class Target {
     return this.runningHackBatches.find(b => b.batchNumber === batchNumber) ?? undefined
   }
 
-  getNextStep(): TargetNextStep {
-    if (!this.IsPrepped()) { // not prepped
+  getNextStep(ns:NS): TargetNextStep {
+    if (!this.IsPrepped(ns)) { // not prepped
       if (!this.runningPrepBatch && !this.onDeckBatch) {  // no prepBatch created
-        this.onDeckBatch = new PrepBatch(this.hostname, this.batchNumber++)  // create a prepBatch, put it on deck
+        this.onDeckBatch = new PrepBatch(ns, this.hostname, this.batchNumber++)  // create a prepBatch, put it on deck
         return { state: "prep_ready", batch: this.onDeckBatch }
       } else if (this.onDeckBatch) {                          // batch on deck, still waiting to start
         return { state: "prep_ready", batch: this.onDeckBatch }
@@ -82,32 +82,58 @@ export class Target {
       }
     } else { // target is prepped
       if (this.runningHackBatches.length == 0 && !this.onDeckBatch) {    // no hackBatch created
-        this.onDeckBatch = new HackBatch(this.hostname, this.batchNumber++)  // create a hackBatch, put it on deck
+        this.onDeckBatch = new HackBatch(ns, this.hostname, this.batchNumber++)  // create a hackBatch, put it on deck
         return { state: "hack_ready", batch: this.onDeckBatch }
       } else if (this.onDeckBatch) {                          // batch on deck, still waiting to start
         return { state: "hack_ready", batch: this.onDeckBatch }
       } else { // nothing on deck, check to see if we want to create another batch
-        if (this.getMaxRunningBatchCount() > this.getRunningBatchCount()) {     // can add another batch
-          this.onDeckBatch = new HackBatch(this.hostname, this.batchNumber++)  // create a hackBatch, put it on deck
-          return { state: "hack_ready", batch: this.onDeckBatch }
-        } else {
-          return { state: "hack_running" }
+        if (this.getMaxRunningBatchCount() > this.getRunningBatchCount()) {
+          let testBatch = new HackBatch(ns, this.hostname, this.batchNumber++)          
+          if (testBatch.hackPct == Config.defaultHackPct) {
+            // can run a full batch, so do it
+            this.onDeckBatch = testBatch  // create a hackBatch, put it on deck
+            return { state: "hack_ready", batch: this.onDeckBatch }
+          } else {
+            // batch can't be a full batch
+            // allow up to 3 batches of any size, or allow up to 2 less-than-max batches if > 3 batches
+            let reducedBatches = this.runningHackBatches.filter(b => b.hackPct < Config.defaultHackPct).length
+            if (this.getRunningBatchCount() < 3 || reducedBatches < 2) {
+              this.onDeckBatch = testBatch  // create a hackBatch, put it on deck
+              return { state: "hack_ready", batch: this.onDeckBatch }
+            }
+          }
+          // // allow up to 3 batches of any size, or allow up to 2 less-than-max batches if > 3 batches
+          // let reducedBatches = this.runningHackBatches.filter(b => b.hackPct < Config.defaultHackPct).length
+          // if (this.getRunningBatchCount() < 3 || reducedBatches <= 2) {
+          //   this.onDeckBatch = new HackBatch(ns, this.hostname, this.batchNumber++)  // create a hackBatch, put it on deck
+          //   return { state: "hack_ready", batch: this.onDeckBatch }
+          // }
+          // if (!(this.getRunningBatchCount() > 1 && this.runningHackBatches.slice(-1)[0].hackPct < Config.defaultHackPct)) {
+          //   // can add another batch if last batch was max hackPct
+          //   this.onDeckBatch = new HackBatch(ns, this.hostname, this.batchNumber++)  // create a hackBatch, put it on deck
+          //   return { state: "hack_ready", batch: this.onDeckBatch }
+          // }
         }
+        return { state: "hack_running" }
       }
     }
   }
 
-  runOnDeckBatch(): boolean {
+  runOnDeckBatch(ns:NS): boolean {
     if (this.onDeckBatch) {
       // check for ram availability
-      let ram = new MemoryMap(ns.ns)
-      if (ram.available >= this.onDeckBatch.getRamUsage() || SessionState.getAllBatches().length == 0) {
-        // ns.ns.print(`${this.hostname}: runOnDeckBatch, go!`)
-        this.onDeckBatch.RunBatch()
+      let ram = new MemoryMap(ns)
+      if (ram.available >= this.onDeckBatch.ramStats.totalRamUsage || SessionState.getAllBatches().length == 0) {
+        ns.print(`${this.hostname}: runOnDeckBatch, go! ram: ${ns.formatRam(ram.available)} avail / ${ns.formatRam(this.onDeckBatch.ramStats.totalRamUsage)} batch`)
+        this.onDeckBatch.RunBatch(ns)
         SessionState.addTarget(this)
         this.addBatch(this.onDeckBatch)
         this.onDeckBatch = undefined
         return true
+      } else {
+        ns.print(`runOnDeckBatch: not enough ram! ${ns.formatRam(ram.available)} avail / ${ns.formatRam(this.onDeckBatch.ramStats.totalRamUsage)} batch`)
+        // clear batch so a new one can be re-calc'ed later
+        this.onDeckBatch = undefined
       }
     }
     return false

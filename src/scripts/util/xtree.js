@@ -140,8 +140,11 @@ export async function main(ns) {
       } else if (hack_report.hack_type === "batcher") {
         // batcher has runningHackBatches, use SessionState
         let runningHackBatches = SessionState.getTargetByHostname(server.name)?.runningHackBatches
+        let runningPrepBatch = SessionState.getTargetByHostname(server.name)?.runningPrepBatch
         if (runningHackBatches?.length > 0) {
           hacking = `${runningHackBatches.length}B. [${FormatTime(runningHackBatches[0].expectedDuration)}] (${FormatTime(runningHackBatches[0].expectedEndTime - Date.now())})`
+        } else if (runningPrepBatch) {
+          hacking = `Prep. [${FormatTime(runningPrepBatch.expectedDuration)}] (${FormatTime(runningPrepBatch.expectedEndTime - Date.now())})`
         }
       }
     }

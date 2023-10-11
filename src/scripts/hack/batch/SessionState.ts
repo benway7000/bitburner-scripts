@@ -1,4 +1,3 @@
-import { ns } from "scripts/lib/NS"
 import type { Batch } from "/scripts/hack/batch/Batch";
 import type { Target } from "scripts/hack/batch/Target";
 

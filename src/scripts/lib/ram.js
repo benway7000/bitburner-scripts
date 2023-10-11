@@ -17,6 +17,7 @@ export async function main(ns) {
     { header: "   Grow", width: 8 },
     { header: "   Hack", width: 8 },
     { header: "  Share", width: 8 },
+    { header: "  Xp", width: 8 },
     { header: " Charge", width: 8 },
     { header: "  Other", width: 8 },
     { header: " Scripts", width: 9 },
@@ -191,10 +192,11 @@ export async function main(ns) {
 
 function GetProcessDetails(ns, server) {
   const categories = [
-    { script: "weaken", header: "Weaken" },
-    { script: "grow", header: "Grow" },
-    { script: "hack", header: "Hack" },
+    { script: "batcher_weaken", header: "Weaken" },
+    { script: "batcher_grow", header: "Grow" },
+    { script: "batcher_hack", header: "Hack" },
     { script: "share-", header: "Share" },
+    { script: "xp-", header: "Xp" },
     { script: "charge", header: "Charge" },
   ]
 
@@ -202,7 +204,7 @@ function GetProcessDetails(ns, server) {
   let serverRam = ns.getServer(server).maxRam
 
   let ret = categories.map(function (cat) {
-    let matches = procs.filter((p) => p.filename.startsWith(cat.script))
+    let matches = procs.filter((p) => p.filename.includes(cat.script))
     // ns.tprint("Checking server " + server + " for file " + s.filename)
     let ram = matches.reduce(
       (a, s) => (a += s.threads * ns.getScriptRam(s.filename, server)),
@@ -214,7 +216,7 @@ function GetProcessDetails(ns, server) {
 
   // Other category
   let matches = procs.filter(
-    (p) => !categories.some((c) => p.filename.startsWith(c.script))
+    (p) => !categories.some((c) => p.filename.includes(c.script))
   )
   // ns.tprint("Checking2 server " + server + " for file " + s.filename)
   let ram = matches.reduce(

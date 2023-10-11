@@ -33,7 +33,7 @@ async function InstallBackdoors(ns) {
       ) {
         // if already backdoor'ed or it's not rooted or it's too hard to backdoor
         ns.print(serverEntry.name + ": skipping")
-        await ns.sleep(100)
+        await ns.asleep(100)
         continue
       }
       ns.print("found a backdoor target: " + serverEntry.name)
@@ -52,7 +52,7 @@ async function DoInstallBackdoorsPreSingularity(ns, serverEntry) {
   let routeCommands = serverEntry.route.join(";connect ")
   // ns.tprint("route command: " + routeCommands)
   let result = TypeInTerminal(routeCommands)
-  await ns.sleep(500)
+  await ns.asleep(500)
   result = TypeInTerminal("backdoor")
   await WaitForBackdoor(ns)
   let result2 = TypeInTerminal("home")

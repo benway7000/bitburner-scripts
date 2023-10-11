@@ -32,8 +32,8 @@ export function GetTopHackServers(ns, count = 10) {
 
 export function SortServerListByTopHacking(ns, servers) {
   return servers
-    .sort((a, b) => b.weight - a.weight)
     .sort((a, b) => ns.getServerMaxMoney(b.name) - ns.getServerMaxMoney(a.name))
+    .sort((a, b) => b.weight - a.weight)
 }
 
 export function GetAllServers(

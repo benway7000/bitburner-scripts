@@ -18,16 +18,26 @@ export async function main(ns) {
             ns.print("Not enough RAM to share: " + ram.total + " / 5000")
 			return;
         }
+		// else if (ram.total < 5000)
+		// 	pct = 0.15;
+		// else if (ram.total < 10000)
+		// 	pct = 0.2;
+		// else if (ram.total < 15000)
+		// 	pct = 0.25;
+		// else if (ram.total < 25000)
+		// 	pct = 0.30;
+		// else
+		// 	pct = 0.35
 		else if (ram.total < 5000)
-			pct = 0.15;
+			pct = 0.1
 		else if (ram.total < 10000)
-			pct = 0.2;
+			pct = 0.12
 		else if (ram.total < 15000)
-			pct = 0.25;
+			pct = 0.14
 		else if (ram.total < 25000)
-			pct = 0.30;
+			pct = 0.16
 		else
-			pct = 0.35
+			pct = 0.18
 	}
 
 	if (ns.args.includes('stop')) {

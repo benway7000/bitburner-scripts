@@ -43,6 +43,16 @@ export async function main(ns) {
   ns.disableLog("ALL")
   ns.enableLog("exec")
 
+
+  // for low ram, run the other script
+  // run again in 10s
+  let homeRam = ns.getServerMaxRam("home")
+  if (homeRam < 64)  {   // less than 64, run low-ram
+    ns.tprint(`Low Home RAM (${ns.formatRam(homeRam)}), starting low-ram version`)
+    ns.spawn("/scripts/autostart/autostart_lowram.js")
+  }
+
+
   FracturedJson.InitializeFracturedJson()
 
   let pid = ns.getRunningScript(
@@ -58,7 +68,12 @@ export async function main(ns) {
     await TryRunScript(ns, "/scripts/util/sitrep.js")
     let sitrep = GetSitRep(ns)
     let karma = sitrep.karma
-    RunHomeSingletonScript(ns, "/scripts/autostart/share.js", 1, ["auto"])
+    let homeRamTotal = sitrep.ram.home
+
+    // share if we have some ram
+    if (homeRamTotal > 1024) {
+      RunHomeSingletonScript(ns, "/scripts/autostart/share.js", 1, ["auto"])
+    }
 
     // Check if we need to buy more port crackers
     // JEFF FIX TODO
@@ -75,6 +90,9 @@ export async function main(ns) {
       // Buy programs, run programs, nuke
       await TryRunScript(ns, "/scripts/autostart/breach.js", [true])
     }
+
+    // contracts
+    await TryRunScript(ns, "/scripts/contracts/SolveContract.js", [])
 
     // if (sitrep.servers.some(s => s.contracts.length > 0)) {
     // 	// Solve contracts
@@ -121,8 +139,8 @@ export async function main(ns) {
       )
     ) {
       // Install backdoors
-      // await TryRunScript(ns, "/scripts/autostart/backdoor.js", BACKDOOR_TARGETS)
-      RunHomeSingletonScript(ns, "/scripts/autostart/backdoor.js", 1, BACKDOOR_TARGETS)
+      await TryRunScript(ns, "/scripts/autostart/backdoor.js", BACKDOOR_TARGETS)
+      // RunHomeSingletonScript(ns, "/scripts/autostart/backdoor.js", 1, BACKDOOR_TARGETS)
     }
 
     // purchase servers, after programs are bought
@@ -169,17 +187,19 @@ export async function main(ns) {
     // Farm XP for a bit
     // TODO need singularity to make this not keep re-clicking it
     if (ns.getPlayer().skills.hacking < 100) {
-      RunHomeSingletonScript(ns, "/scripts/autostart/study.js", 1, ["silent"])
-      //   await TryRunScript(ns, "/scripts/autostart/study.js", ["silent"])
+      // RunHomeSingletonScript(ns, "/scripts/autostart/study.js", 1, ["silent"])
+      await TryRunScript(ns, "/scripts/autostart/study.js", ["silent"])
     }
 
-    // run xp on joesguns
-    // RunHomeSingletonScript(ns, "/scripts/hack/xp/xp_loop_v1.js", 1, [0.2])
-    RunHomeSingletonScript(ns, "/scripts/hack/xp/xp.js", 1, ["auto"])
 
     // RunHackScript(ns, sitrep, "/scripts/hack/loop_hack/v5.js")
     // RunHomeSingletonScript(ns, "/scripts/hack/batch/batch_v3.js", 1, ["auto"])
     RunHomeSingletonScript(ns, "/scripts/hack/batch/batcher.js", 1, ["auto"])
+
+    // xp is after hack for low-ram situations - TODO something better
+    // run xp on joesguns
+
+    RunHomeSingletonScript(ns, "/scripts/hack/xp/xp.js", 1, ["auto"])
 
     // Run manager on joesguns until we have all ports open
     // if (

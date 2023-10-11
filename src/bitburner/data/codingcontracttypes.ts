@@ -5,11 +5,22 @@ import { comprGenChar, comprLZGenerate, comprLZEncode, comprLZDecode } from "bit
 import { HammingEncode, HammingDecode, HammingEncodeProperly } from "bitburner/data/HammingCodeTools";
 import { filterTruthy } from "bitburner/data/helpers/ArrayHelpers";
 
+
+/**
+ * Jeff: taken from https://github.com/bitburner-official/bitburner-src/blob/dev/src/data/codingcontracttypes.ts
+ * 
+ * then manually (regex replace) remove all gen() functions b/c they bring in extra deps
+ * 
+ * then manually change 'solver' funcs to return the answer for given data
+ * 
+ */
+
+
 /* Function that generates a valid 'data' for a contract type */
 export type GeneratorFunc = () => unknown;
 
 /* Function that checks if the provided solution is the correct one */
-export type SolverFunc = (data: unknown, answer: string) => boolean;
+export type SolverFunc = (data: unknown, answer: string) => string
 
 /* Function that returns a string with the problem's description.
    Requires the 'data' of a Contract as input */
@@ -68,10 +79,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       );
     },
     difficulty: 1,
-    gen: () => {},
+    gen: () => { },
     name: "Find Largest Prime Factor",
     numTries: 10,
-    solver: (data: unknown, ans: string): boolean => {
+    solver: (data: unknown, ans: string): string => {
       if (typeof data !== "number") throw new Error("solver expected number");
       let fac = 2;
       let n: number = data;
@@ -82,7 +93,7 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
         ++fac;
       }
 
-      return (n === 1 ? fac - 1 : n) === parseInt(ans, 10);
+      return (n === 1 ? new Number(fac - 1).toString() : new Number(n).toString());
     },
   },
   {
@@ -96,17 +107,17 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       ].join(" ");
     },
     difficulty: 1,
-    gen: () => {},
+    gen: () => { },
     name: "Subarray with Maximum Sum",
     numTries: 10,
-    solver: (_data: unknown, ans: string): boolean => {
+    solver: (_data: unknown, ans: string): string => {
       const data = _data as number[];
       const nums: number[] = data.slice();
       for (let i = 1; i < nums.length; i++) {
         nums[i] = Math.max(nums[i], nums[i] + nums[i - 1]);
       }
 
-      return parseInt(ans, 10) === Math.max(...nums);
+      return new Number(Math.max(...nums)).toString();
     },
   },
   {
@@ -123,10 +134,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       ].join(" ");
     },
     difficulty: 1.5,
-    gen: () => {},
+    gen: () => { },
     name: "Total Ways to Sum",
     numTries: 10,
-    solver: (data: unknown, ans: string): boolean => {
+    solver: (data: unknown, ans: string): string => {
       if (typeof data !== "number") throw new Error("solver expected number");
       const ways: number[] = [1];
       ways.length = data + 1;
@@ -137,7 +148,7 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
         }
       }
 
-      return ways[data] === parseInt(ans, 10);
+      return new Number(ways[data]).toString();
     },
   },
   {
@@ -153,10 +164,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       ].join(" ");
     },
     difficulty: 2,
-    gen: () => {},
+    gen: () => { },
     name: "Total Ways to Sum II",
     numTries: 10,
-    solver: (_data: unknown, ans: string): boolean => {
+    solver: (_data: unknown, ans: string): string => {
       const data = _data as [number, number[]];
       // https://www.geeksforgeeks.org/coin-change-dp-7/?ref=lbp
       const n = data[0];
@@ -169,7 +180,7 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
           ways[j] += ways[j - s[i]];
         }
       }
-      return ways[n] === parseInt(ans, 10);
+      return new Number(ways[n]).toString();
     },
   },
   {
@@ -212,10 +223,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       return d;
     },
     difficulty: 2,
-    gen: () => {},
+    gen: () => { },
     name: "Spiralize Matrix",
     numTries: 10,
-    solver: (_data: unknown, ans: string): boolean => {
+    solver: (_data: unknown, ans: string): string => {
       const data = _data as number[][];
       const spiral: number[] = [];
       const m: number = data.length;
@@ -268,18 +279,7 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
         }
       }
 
-      const sanitizedPlayerAns = removeBracketsFromArrayString(ans).replace(/\s/g, "");
-      const playerAns = sanitizedPlayerAns.split(",").map((s) => parseInt(s));
-      if (spiral.length !== playerAns.length) {
-        return false;
-      }
-      for (let i = 0; i < spiral.length; ++i) {
-        if (spiral[i] !== playerAns[i]) {
-          return false;
-        }
-      }
-
-      return true;
+      return spiral.toString()
     },
   },
   {
@@ -299,10 +299,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       ].join(" ");
     },
     difficulty: 2.5,
-    gen: () => {},
+    gen: () => { },
     name: "Array Jumping Game",
     numTries: 1,
-    solver: (_data: unknown, ans: string): boolean => {
+    solver: (_data: unknown, ans: string): string => {
       const data = _data as number[];
       const n: number = data.length;
       let i = 0;
@@ -310,7 +310,7 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
         reach = Math.max(i + data[i], reach);
       }
       const solution: boolean = i === n;
-      return (ans === "1" && solution) || (ans === "0" && !solution);
+      return new Boolean(solution).toString()
     },
   },
   {
@@ -330,10 +330,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       ].join(" ");
     },
     difficulty: 3,
-    gen: () => {},
+    gen: () => { },
     name: "Array Jumping Game II",
     numTries: 3,
-    solver: (_data: unknown, ans: string): boolean => {
+    solver: (_data: unknown, ans: string): string => {
       const data = _data as number[];
       const n: number = data.length;
       let reach = 0;
@@ -354,7 +354,7 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
         lastJump = jumpedFrom;
         jumps++;
       }
-      return jumps === parseInt(ans, 10);
+      return new Number(jumps).toString();
     },
   },
   {
@@ -373,10 +373,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       ].join(" ");
     },
     difficulty: 3,
-    gen: () => {},
+    gen: () => { },
     name: "Merge Overlapping Intervals",
     numTries: 15,
-    solver: (_data: unknown, ans: string): boolean => {
+    solver: (_data: unknown, ans: string): string => {
       const data = _data as number[][];
       const intervals: number[][] = data.slice();
       intervals.sort((a: number[], b: number[]) => {
@@ -398,9 +398,7 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       result.push([start, end]);
 
       const sanitizedResult: string = convert2DArrayToString(result);
-      const sanitizedAns: string = ans.replace(/\s/g, "");
-
-      return sanitizedResult === sanitizedAns || sanitizedResult === removeBracketsFromArrayString(sanitizedAns);
+      return sanitizedResult
     },
   },
   {
@@ -418,10 +416,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       ].join(" ");
     },
     difficulty: 3,
-    gen: () => {},
+    gen: () => { },
     name: "Generate IP Addresses",
     numTries: 10,
-    solver: (data: unknown, ans: string): boolean => {
+    solver: (data: unknown, ans: string): string => {
       if (typeof data !== "string") throw new Error("solver expected string");
       const ret: string[] = [];
       for (let a = 1; a <= 3; ++a) {
@@ -445,20 +443,7 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
         }
       }
 
-      const sanitizedAns: string = removeBracketsFromArrayString(ans).replace(/\s/g, "");
-      const ansArr: string[] = sanitizedAns
-        .split(",")
-        .map((ip) => ip.replace(/^(?<quote>['"])([\d.]*)\k<quote>$/g, "$2"));
-      if (ansArr.length !== ret.length) {
-        return false;
-      }
-      for (const ipInAns of ansArr) {
-        if (!ret.includes(ipInAns)) {
-          return false;
-        }
-      }
-
-      return true;
+      return ret.toString()
     },
   },
   {
@@ -475,10 +460,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       ].join(" ");
     },
     difficulty: 1,
-    gen: () => {},
+    gen: () => { },
     name: "Algorithmic Stock Trader I",
     numTries: 5,
-    solver: (_data: unknown, ans: string): boolean => {
+    solver: (_data: unknown, ans: string): string => {
       const data = _data as number[];
       let maxCur = 0;
       let maxSoFar = 0;
@@ -487,7 +472,7 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
         maxSoFar = Math.max(maxCur, maxSoFar);
       }
 
-      return maxSoFar.toString() === ans;
+      return maxSoFar.toString();
     },
   },
   {
@@ -506,17 +491,17 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       ].join(" ");
     },
     difficulty: 2,
-    gen: () => {},
+    gen: () => { },
     name: "Algorithmic Stock Trader II",
     numTries: 10,
-    solver: (_data: unknown, ans: string): boolean => {
+    solver: (_data: unknown, ans: string): string => {
       const data = _data as number[];
       let profit = 0;
       for (let p = 1; p < data.length; ++p) {
         profit += Math.max(data[p] - data[p - 1], 0);
       }
 
-      return profit.toString() === ans;
+      return profit.toString();
     },
   },
   {
@@ -535,10 +520,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       ].join(" ");
     },
     difficulty: 5,
-    gen: () => {},
+    gen: () => { },
     name: "Algorithmic Stock Trader III",
     numTries: 10,
-    solver: (_data: unknown, ans: string): boolean => {
+    solver: (_data: unknown, ans: string): string => {
       const data = _data as number[];
       let hold1 = Number.MIN_SAFE_INTEGER;
       let hold2 = Number.MIN_SAFE_INTEGER;
@@ -551,7 +536,7 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
         hold1 = Math.max(hold1, price * -1);
       }
 
-      return release2.toString() === ans;
+      return release2.toString();
     },
   },
   {
@@ -574,17 +559,17 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       ].join(" ");
     },
     difficulty: 8,
-    gen: () => {},
+    gen: () => { },
     name: "Algorithmic Stock Trader IV",
     numTries: 10,
-    solver: (_data: unknown, ans: string): boolean => {
+    solver: (_data: unknown, ans: string): string => {
       const data = _data as [number, number[]];
       const k: number = data[0];
       const prices: number[] = data[1];
 
       const len = prices.length;
       if (len < 2) {
-        return parseInt(ans) === 0;
+        return new Number(0).toString()
       }
       if (k > len / 2) {
         let res = 0;
@@ -592,7 +577,7 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
           res += Math.max(prices[i] - prices[i - 1], 0);
         }
 
-        return parseInt(ans) === res;
+        return new Number(res).toString()
       }
 
       const hold: number[] = [];
@@ -613,7 +598,7 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
         }
       }
 
-      return parseInt(ans) === rele[k];
+      return new Number(rele[k]).toString();
     },
   },
   {
@@ -655,10 +640,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       ].join(" ");
     },
     difficulty: 5,
-    gen: () => {},
+    gen: () => { },
     name: "Minimum Path Sum in a Triangle",
     numTries: 10,
-    solver: (_data: unknown, ans: string): boolean => {
+    solver: (_data: unknown, ans: string): string => {
       const data = _data as number[][];
       const n: number = data.length;
       const dp: number[] = data[n - 1].slice();
@@ -668,7 +653,7 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
         }
       }
 
-      return dp[0] === parseInt(ans);
+      return new Number(dp[0]).toString();
     },
   },
   {
@@ -689,10 +674,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       ].join(" ");
     },
     difficulty: 3,
-    gen: () => {},
+    gen: () => { },
     name: "Unique Paths in a Grid I",
     numTries: 10,
-    solver: (_data: unknown, ans: string): boolean => {
+    solver: (_data: unknown, ans: string): string => {
       const data = _data as number[];
       const n: number = data[0]; // Number of rows
       const m: number = data[1]; // Number of columns
@@ -708,7 +693,7 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
         }
       }
 
-      return parseInt(ans) === currentRow[n - 1];
+      return new Number(currentRow[n - 1]).toString();
     },
   },
   {
@@ -730,10 +715,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       ].join(" ");
     },
     difficulty: 5,
-    gen: () => {},
+    gen: () => { },
     name: "Unique Paths in a Grid II",
     numTries: 10,
-    solver: (_data: unknown, ans: string): boolean => {
+    solver: (_data: unknown, ans: string): string => {
       const data = _data as number[][];
       const obstacleGrid: number[][] = [];
       obstacleGrid.length = data.length;
@@ -753,7 +738,7 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
         }
       }
 
-      return obstacleGrid[obstacleGrid.length - 1][obstacleGrid[0].length - 1] === parseInt(ans);
+      return new Number(obstacleGrid[obstacleGrid.length - 1][obstacleGrid[0].length - 1]).toString()
     },
   },
   {
@@ -784,89 +769,127 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
     },
     difficulty: 7,
     numTries: 10,
-    gen: () => {},
-    solver: (_data: unknown, ans: string): boolean => {
-      const data = _data as number[][];
-      const width = data[0].length;
-      const height = data.length;
-      const dstY = height - 1;
-      const dstX = width - 1;
+    gen: () => { },
+    solver: (_data: unknown, ans: string): string => {
+      // from https://github.com/xxxsinx/bitburner/blob/main/solver.js
+      // the bitburner solver (commented out, below) doesn't create the string of directions
+      let data = _data as number[][]
+      let H = data.length, W = data[0].length;
+      let dist = Array.from(Array(H), () => Array(W).fill(Number.POSITIVE_INFINITY));
+      dist[0][0] = 0;
 
-      const distance: [number][] = new Array(height);
-      //const prev: [[number, number] | undefined][] = new Array(height);
-      const queue = new MinHeap<[number, number]>();
+      let queue = [[0, 0]];
+      while (queue.length > 0) {
+        let [i, j]: number[] = queue.shift() as number[];
+        let d = dist[i][j];
 
-      for (let y = 0; y < height; y++) {
-        distance[y] = new Array(width).fill(Infinity) as [number];
-        //prev[y] = new Array(width).fill(undefined) as [undefined];
+        if (i > 0 && d + 1 < dist[i - 1][j] && data[i - 1][j] !== 1) { dist[i - 1][j] = d + 1; queue.push([i - 1, j]); }
+        if (i < H - 1 && d + 1 < dist[i + 1][j] && data[i + 1][j] !== 1) { dist[i + 1][j] = d + 1; queue.push([i + 1, j]); }
+        if (j > 0 && d + 1 < dist[i][j - 1] && data[i][j - 1] !== 1) { dist[i][j - 1] = d + 1; queue.push([i, j - 1]); }
+        if (j < W - 1 && d + 1 < dist[i][j + 1] && data[i][j + 1] !== 1) { dist[i][j + 1] = d + 1; queue.push([i, j + 1]); }
       }
 
-      function validPosition(y: number, x: number): boolean {
-        return y >= 0 && y < height && x >= 0 && x < width && data[y][x] == 0;
-      }
+      let path = "";
+      if (Number.isFinite(dist[H - 1][W - 1])) {
+        let i = H - 1, j = W - 1;
+        while (i !== 0 || j !== 0) {
+          let d = dist[i][j];
 
-      // List in-bounds and passable neighbors
-      function* neighbors(y: number, x: number): Generator<[number, number]> {
-        if (validPosition(y - 1, x)) yield [y - 1, x]; // Up
-        if (validPosition(y + 1, x)) yield [y + 1, x]; // Down
-        if (validPosition(y, x - 1)) yield [y, x - 1]; // Left
-        if (validPosition(y, x + 1)) yield [y, x + 1]; // Right
-      }
+          let new_i = 0, new_j = 0, dir = "";
+          if (i > 0 && dist[i - 1][j] < d) { d = dist[i - 1][j]; new_i = i - 1; new_j = j; dir = "D"; }
+          if (i < H - 1 && dist[i + 1][j] < d) { d = dist[i + 1][j]; new_i = i + 1; new_j = j; dir = "U"; }
+          if (j > 0 && dist[i][j - 1] < d) { d = dist[i][j - 1]; new_i = i; new_j = j - 1; dir = "R"; }
+          if (j < W - 1 && dist[i][j + 1] < d) { d = dist[i][j + 1]; new_i = i; new_j = j + 1; dir = "L"; }
 
-      // Prepare starting point
-      distance[0][0] = 0;
-      queue.push([0, 0], 0);
-
-      // Take next-nearest position and expand potential paths from there
-      while (queue.size > 0) {
-        const [y, x] = queue.pop() as [number, number];
-        for (const [yN, xN] of neighbors(y, x)) {
-          const d = distance[y][x] + 1;
-          if (d < distance[yN][xN]) {
-            if (distance[yN][xN] == Infinity)
-              // Not reached previously
-              queue.push([yN, xN], d);
-            // Found a shorter path
-            else queue.changeWeight(([yQ, xQ]) => yQ == yN && xQ == xN, d);
-            //prev[yN][xN] = [y, x];
-            distance[yN][xN] = d;
-          }
+          i = new_i; j = new_j;
+          path = dir + path;
         }
       }
 
-      // No path at all?
-      if (distance[dstY][dstX] == Infinity) return ans == "";
+      return path;
+    }
+    // solver: (_data: unknown, ans: string): string => {
+    //   const data = _data as number[][];
+    //   const width = data[0].length;
+    //   const height = data.length;
+    //   const dstY = height - 1;
+    //   const dstX = width - 1;
 
-      // There is a solution, require that the answer path is as short as the shortest
-      // path we found
-      if (ans.length > distance[dstY][dstX]) return false;
+    //   const distance: [number][] = new Array(height);
+    //   //const prev: [[number, number] | undefined][] = new Array(height);
+    //   const queue = new MinHeap<[number, number]>();
 
-      // Further verify that the answer path is a valid path
-      let ansX = 0;
-      let ansY = 0;
-      for (const direction of ans) {
-        switch (direction) {
-          case "U":
-            ansY -= 1;
-            break;
-          case "D":
-            ansY += 1;
-            break;
-          case "L":
-            ansX -= 1;
-            break;
-          case "R":
-            ansX += 1;
-            break;
-          default:
-            return false; // Invalid character
-        }
-        if (!validPosition(ansY, ansX)) return false;
-      }
+    //   for (let y = 0; y < height; y++) {
+    //     distance[y] = new Array(width).fill(Infinity) as [number];
+    //     //prev[y] = new Array(width).fill(undefined) as [undefined];
+    //   }
 
-      // Path was valid, finally verify that the answer path brought us to the end coordinates
-      return ansY == dstY && ansX == dstX;
-    },
+    //   function validPosition(y: number, x: number): boolean {
+    //     return y >= 0 && y < height && x >= 0 && x < width && data[y][x] == 0;
+    //   }
+
+    //   // List in-bounds and passable neighbors
+    //   function* neighbors(y: number, x: number): Generator<[number, number]> {
+    //     if (validPosition(y - 1, x)) yield [y - 1, x]; // Up
+    //     if (validPosition(y + 1, x)) yield [y + 1, x]; // Down
+    //     if (validPosition(y, x - 1)) yield [y, x - 1]; // Left
+    //     if (validPosition(y, x + 1)) yield [y, x + 1]; // Right
+    //   }
+
+    //   // Prepare starting point
+    //   distance[0][0] = 0;
+    //   queue.push([0, 0], 0);
+
+    //   // Take next-nearest position and expand potential paths from there
+    //   while (queue.size > 0) {
+    //     const [y, x] = queue.pop() as [number, number];
+    //     for (const [yN, xN] of neighbors(y, x)) {
+    //       const d = distance[y][x] + 1;
+    //       if (d < distance[yN][xN]) {
+    //         if (distance[yN][xN] == Infinity)
+    //           // Not reached previously
+    //           queue.push([yN, xN], d);
+    //         // Found a shorter path
+    //         else queue.changeWeight(([yQ, xQ]) => yQ == yN && xQ == xN, d);
+    //         //prev[yN][xN] = [y, x];
+    //         distance[yN][xN] = d;
+    //       }
+    //     }
+    //   }
+
+    //   // No path at all?
+    //   if (distance[dstY][dstX] == Infinity) return "";
+
+    //   // // There is a solution, require that the answer path is as short as the shortest
+    //   // // path we found
+    //   // if (ans.length > distance[dstY][dstX]) return false;
+
+    //   // Further verify that the answer path is a valid path
+    //   let ansX = 0;
+    //   let ansY = 0;
+    //   for (const direction of ans) {
+    //     switch (direction) {
+    //       case "U":
+    //         ansY -= 1;
+    //         break;
+    //       case "D":
+    //         ansY += 1;
+    //         break;
+    //       case "L":
+    //         ansX -= 1;
+    //         break;
+    //       case "R":
+    //         ansX += 1;
+    //         break;
+    //       default:
+    //         return false; // Invalid character
+    //     }
+    //     if (!validPosition(ansY, ansX)) return false;
+    //   }
+
+    //   // Path was valid, finally verify that the answer path brought us to the end coordinates
+    //   return ansY == dstY && ansX == dstX;
+    // },
   },
   {
     desc: (data: unknown): string => {
@@ -886,10 +909,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       ].join(" ");
     },
     difficulty: 10,
-    gen: () => {},
+    gen: () => { },
     name: "Sanitize Parentheses in Expression",
     numTries: 10,
-    solver: (data: unknown, ans: string): boolean => {
+    solver: (data: unknown, ans: string): string => {
       if (typeof data !== "string") throw new Error("solver expected string");
       let left = 0;
       let right = 0;
@@ -938,23 +961,8 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       }
 
       dfs(0, 0, left, right, data, "", res);
+      return res.toString()
 
-      const sanitizedPlayerAns: string = removeBracketsFromArrayString(ans);
-      const sanitizedPlayerAnsArr: string[] = sanitizedPlayerAns.split(",");
-      for (let i = 0; i < sanitizedPlayerAnsArr.length; ++i) {
-        sanitizedPlayerAnsArr[i] = removeQuotesFromString(sanitizedPlayerAnsArr[i]).replace(/\s/g, "");
-      }
-
-      if (sanitizedPlayerAnsArr.length !== res.length) {
-        return false;
-      }
-      for (const resultInAnswer of res) {
-        if (!sanitizedPlayerAnsArr.includes(resultInAnswer)) {
-          return false;
-        }
-      }
-
-      return true;
     },
   },
   {
@@ -984,10 +992,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       ].join(" ");
     },
     difficulty: 10,
-    gen: () => {},
+    gen: () => { },
     name: "Find All Valid Math Expressions",
     numTries: 10,
-    solver: (_data: unknown, ans: string): boolean => {
+    solver: (_data: unknown, ans: string): string => {
       const data = _data as [string, number];
       const num = data[0];
       const target = data[1];
@@ -1032,27 +1040,22 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       }
 
       if (num == null || num.length === 0) {
-        if (sanitizedPlayerAnsArr.length === 0) {
-          return true;
-        }
-        if (sanitizedPlayerAnsArr.length === 1 && sanitizedPlayerAnsArr[0] === "") {
-          return true;
-        }
-        return false;
+        return ""
       }
 
       const result: string[] = [];
       helper(result, "", num, target, 0, 0, 0);
-      // Prevent player from providing extra wrong answers and still receiving credit
-      if (result.length !== sanitizedPlayerAnsArr.length) return false;
+      return result.toString()
+      // // Prevent player from providing extra wrong answers and still receiving credit
+      // if (result.length !== sanitizedPlayerAnsArr.length) return false;
 
-      for (const expr of result) {
-        if (!sanitizedPlayerAnsArr.includes(expr)) {
-          return false;
-        }
-      }
+      // for (const expr of result) {
+      //   if (!sanitizedPlayerAnsArr.includes(expr)) {
+      //     return false;
+      //   }
+      // }
 
-      return true;
+      // return true;
     },
   },
   {
@@ -1076,10 +1079,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
         "There should be no leading zeros in the 'data bit' section",
       ].join(" ");
     },
-    gen: () => {},
-    solver: (data: unknown, ans: string): boolean => {
+    gen: () => { },
+    solver: (data: unknown, ans: string): string => {
       if (typeof data !== "number") throw new Error("solver expected number");
-      return ans === HammingEncode(data);
+      return HammingEncode(data);
     },
   },
   {
@@ -1101,10 +1104,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
         "Extra note for automation: return the decimal value as a string",
       ].join(" ");
     },
-    gen: () => {},
-    solver: (data: unknown, ans: string): boolean => {
+    gen: () => { },
+    solver: (data: unknown, ans: string): string => {
       if (typeof data !== "string") throw new Error("solver expected string");
-      return parseInt(ans, 10) === HammingDecode(data);
+      return new Number(HammingDecode(data)).toString();
     },
   },
   {
@@ -1135,85 +1138,134 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
         `Output: []`,
       ].join(" ");
     },
-    gen: () => {},
-    solver: (_data: unknown, ans: string): boolean => {
+    gen: () => { },
+    solver: (_data: unknown, ans: string): string => {
+      // from https://github.com/xxxsinx/bitburner/blob/main/solver.js
+      // the bitburner solver (commented out, below) doesn't create the string of directions
+      let data:[number, [number, number][]] = _data as [number, [number, number][]]
+
       //Helper function to get neighbourhood of a vertex
-      function neighbourhood(vertex: number): number[] {
-        const adjLeft = data[1].filter(([a]) => a == vertex).map(([, b]) => b);
-        const adjRight = data[1].filter(([, b]) => b == vertex).map(([a]) => a);
+      function neighbourhood(vertex:number) {
+        const adjLeft = data[1].filter(([a, _]) => a == vertex).map(([_, b]) => b);
+        const adjRight = data[1].filter(([_, b]) => b == vertex).map(([a, _]) => a);
         return adjLeft.concat(adjRight);
       }
 
-      const data = _data as [number, [number, number][]];
+      //Verify that there is no solution by attempting to create a proper 2-coloring.
+      const coloring = Array(data[0]).fill(undefined);
+      while (coloring.some((val) => val === undefined)) {
+        //Color a vertex in the graph
+        const initialVertex = coloring.findIndex((val) => val === undefined);
+        coloring[initialVertex] = 0;
+        const frontier = [initialVertex];
 
-      //Sanitize player input
-      const sanitizedPlayerAns = removeBracketsFromArrayString(ans);
+        //Propogate the coloring throughout the component containing v greedily
+        while (frontier.length > 0) {
+          const v = frontier.pop() || 0;
+          const neighbors = neighbourhood(v);
 
-      //Case where the player believes there is no solution.
-      //Attempt to construct one to check if this is correct.
-      if (sanitizedPlayerAns === "") {
-        //Verify that there is no solution by attempting to create a proper 2-coloring.
-        const coloring: (number | undefined)[] = Array(data[0]).fill(undefined);
-        while (coloring.some((val) => val === undefined)) {
-          //Color a vertex in the graph
-          const initialVertex: number = coloring.findIndex((val) => val === undefined);
-          coloring[initialVertex] = 0;
-          const frontier: number[] = [initialVertex];
+          //For each vertex u adjacent to v
+          for (const id in neighbors) {
+            const u = neighbors[id];
 
-          //Propagate the coloring throughout the component containing v greedily
-          while (frontier.length > 0) {
-            const v: number = frontier.pop() || 0;
-            const neighbors: number[] = neighbourhood(v);
+            //Set the color of u to the opposite of v's color if it is new,
+            //then add u to the frontier to continue the algorithm.
+            if (coloring[u] === undefined) {
+              if (coloring[v] === 0) coloring[u] = 1;
+              else coloring[u] = 0;
 
-            //For each vertex u adjacent to v
-            for (const id in neighbors) {
-              const u: number = neighbors[id];
+              frontier.push(u);
+            }
 
-              //Set the color of u to the opposite of v's color if it is new,
-              //then add u to the frontier to continue the algorithm.
-              if (coloring[u] === undefined) {
-                if (coloring[v] === 0) coloring[u] = 1;
-                else coloring[u] = 0;
-
-                frontier.push(u);
-              }
-
-              //Assert u,v do not have the same color
-              else if (coloring[u] === coloring[v]) {
-                //If u,v do have the same color, no proper 2-coloring exists, meaning
-                //the player was correct to say there is no proper 2-coloring of the graph.
-                return true;
-              }
+            //Assert u,v do not have the same color
+            else if (coloring[u] === coloring[v]) {
+              //If u,v do have the same color, no proper 2-coloring exists, meaning
+              //the player was correct to say there is no proper 2-coloring of the graph.
+              return "[]";
             }
           }
         }
-
-        //If this code is reached, there exists a proper 2-coloring of the input
-        //graph, and thus the player was incorrect in submitting no answer.
-        return false;
       }
-
-      //Solution provided case
-      const sanitizedPlayerAnsArr: string[] = sanitizedPlayerAns.split(",");
-      const coloring: number[] = sanitizedPlayerAnsArr.map((val) => parseInt(val));
-      if (coloring.length == data[0]) {
-        const edges = data[1];
-        const validColors = [0, 1];
-        //Check that the provided solution is a proper 2-coloring
-        return edges.every(([a, b]) => {
-          const aColor = coloring[a];
-          const bColor = coloring[b];
-          return (
-            validColors.includes(aColor) && //Enforce the first endpoint is color 0 or 1
-            validColors.includes(bColor) && //Enforce the second endpoint is color 0 or 1
-            aColor != bColor //Enforce the endpoints are different colors
-          );
-        });
-      }
-
-      //Return false if the coloring is the wrong size
-      else return false;
+      return coloring.toString();
     },
+    // solver: (_data: unknown, ans: string): boolean => {
+    //   //Helper function to get neighbourhood of a vertex
+    //   function neighbourhood(vertex: number): number[] {
+    //     const adjLeft = data[1].filter(([a]) => a == vertex).map(([, b]) => b);
+    //     const adjRight = data[1].filter(([, b]) => b == vertex).map(([a]) => a);
+    //     return adjLeft.concat(adjRight);
+    //   }
+
+    //   const data = _data as [number, [number, number][]];
+
+    //   //Sanitize player input
+    //   const sanitizedPlayerAns = removeBracketsFromArrayString(ans);
+
+    //   //Case where the player believes there is no solution.
+    //   //Attempt to construct one to check if this is correct.
+    //   if (sanitizedPlayerAns === "") {
+    //     //Verify that there is no solution by attempting to create a proper 2-coloring.
+    //     const coloring: (number | undefined)[] = Array(data[0]).fill(undefined);
+    //     while (coloring.some((val) => val === undefined)) {
+    //       //Color a vertex in the graph
+    //       const initialVertex: number = coloring.findIndex((val) => val === undefined);
+    //       coloring[initialVertex] = 0;
+    //       const frontier: number[] = [initialVertex];
+
+    //       //Propagate the coloring throughout the component containing v greedily
+    //       while (frontier.length > 0) {
+    //         const v: number = frontier.pop() || 0;
+    //         const neighbors: number[] = neighbourhood(v);
+
+    //         //For each vertex u adjacent to v
+    //         for (const id in neighbors) {
+    //           const u: number = neighbors[id];
+
+    //           //Set the color of u to the opposite of v's color if it is new,
+    //           //then add u to the frontier to continue the algorithm.
+    //           if (coloring[u] === undefined) {
+    //             if (coloring[v] === 0) coloring[u] = 1;
+    //             else coloring[u] = 0;
+
+    //             frontier.push(u);
+    //           }
+
+    //           //Assert u,v do not have the same color
+    //           else if (coloring[u] === coloring[v]) {
+    //             //If u,v do have the same color, no proper 2-coloring exists, meaning
+    //             //the player was correct to say there is no proper 2-coloring of the graph.
+    //             return true;
+    //           }
+    //         }
+    //       }
+    //     }
+
+    //     //If this code is reached, there exists a proper 2-coloring of the input
+    //     //graph, and thus the player was incorrect in submitting no answer.
+    //     return false;
+    //   }
+
+    //   //Solution provided case
+    //   const sanitizedPlayerAnsArr: string[] = sanitizedPlayerAns.split(",");
+    //   const coloring: number[] = sanitizedPlayerAnsArr.map((val) => parseInt(val));
+    //   if (coloring.length == data[0]) {
+    //     const edges = data[1];
+    //     const validColors = [0, 1];
+    //     //Check that the provided solution is a proper 2-coloring
+    //     return edges.every(([a, b]) => {
+    //       const aColor = coloring[a];
+    //       const bColor = coloring[b];
+    //       return (
+    //         validColors.includes(aColor) && //Enforce the first endpoint is color 0 or 1
+    //         validColors.includes(bColor) && //Enforce the second endpoint is color 0 or 1
+    //         aColor != bColor //Enforce the endpoints are different colors
+    //       );
+    //     });
+    //   }
+
+    //   //Return false if the coloring is the wrong size
+    //   else return false;
+    // },
   },
   {
     name: "Compression I: RLE Compression",
@@ -1235,42 +1287,73 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
         "&nbsp; &nbsp; zzzzzzzzzzzzzzzzzzz &nbsp;-> &nbsp;9z9z1z &nbsp;(or 9z8z2z, etc.)\n",
       ].join(" ");
     },
-    gen: () => {},
-    solver: (plain: unknown, ans: string): boolean => {
-      if (typeof plain !== "string") throw new Error("solver expected string");
-      if (ans.length % 2 !== 0) {
-        return false;
-      }
-
-      let ans_plain = "";
-      for (let i = 0; i + 1 < ans.length; i += 2) {
-        const length = ans.charCodeAt(i) - 0x30;
-        if (length < 0 || length > 9) {
-          return false;
-        }
-
-        ans_plain += ans[i + 1].repeat(length);
-      }
-      if (ans_plain !== plain) {
-        return false;
-      }
-
-      let length = 0;
-      for (let i = 0; i < plain.length; ) {
-        let run_length = 1;
-        while (i + run_length < plain.length && plain[i + run_length] === plain[i]) {
-          ++run_length;
-        }
-        i += run_length;
-
-        while (run_length > 0) {
-          run_length -= 9;
-          length += 2;
+    gen: () => { },
+    solver: (plain: unknown, ans: string): string => {
+      // https://github.com/xxxsinx/bitburner/blob/main/solver.js
+      let data = plain as string
+      let chars = Array.from(data);
+      let answer = '';
+      let current = undefined;
+      let count = 0;
+      while (chars.length > 0) {
+        let char = chars.shift();
+        switch (current) {
+          case undefined:
+            current = char;
+            count = 1;
+            break;
+          case char:
+            if (count == 9) {
+              answer = `${answer}${count}${current}`;
+              count = 0;
+            }
+            count++;
+            break;
+          default:
+            answer = `${answer}${count}${current}`;
+            current = char;
+            count = 1;
+            break;
         }
       }
+      answer = `${answer}${count}${current}`;
+      return answer;
+    },    
+    // solver: (plain: unknown, ans: string): string => {
+    //   if (typeof plain !== "string") throw new Error("solver expected string");
+    //   if (ans.length % 2 !== 0) {
+    //     return false;
+    //   }
 
-      return ans.length <= length;
-    },
+    //   let ans_plain = "";
+    //   for (let i = 0; i + 1 < ans.length; i += 2) {
+    //     const length = ans.charCodeAt(i) - 0x30;
+    //     if (length < 0 || length > 9) {
+    //       return false;
+    //     }
+
+    //     ans_plain += ans[i + 1].repeat(length);
+    //   }
+    //   if (ans_plain !== plain) {
+    //     return false;
+    //   }
+
+    //   let length = 0;
+    //   for (let i = 0; i < plain.length;) {
+    //     let run_length = 1;
+    //     while (i + run_length < plain.length && plain[i + run_length] === plain[i]) {
+    //       ++run_length;
+    //     }
+    //     i += run_length;
+
+    //     while (run_length > 0) {
+    //       run_length -= 9;
+    //       length += 2;
+    //     }
+    //   }
+
+    //   return ans.length <= length;
+    // },
   },
   {
     name: "Compression II: LZ Decompression",
@@ -1300,10 +1383,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
         "&nbsp; &nbsp; 5aaabb450723abb &nbsp;-> &nbsp;aaabbaaababababaabb",
       ].join(" ");
     },
-    gen: () => {},
-    solver: (compr: unknown, ans: string): boolean => {
+    gen: () => { },
+    solver: (compr: unknown, ans: string): string => {
       if (typeof compr !== "string") throw new Error("solver expected string");
-      return ans === comprLZDecode(compr);
+      return comprLZDecode(compr) as string;
     },
   },
   {
@@ -1337,10 +1420,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
         "&nbsp; &nbsp; aaaaaaaaaaaaaa &nbsp;-> &nbsp;1a91041",
       ].join(" ");
     },
-    gen: () => {},
-    solver: (plain: unknown, ans: string): boolean => {
+    gen: () => { },
+    solver: (plain: unknown, ans: string): string => {
       if (typeof plain !== "string") throw new Error("solver expected string");
-      return comprLZDecode(ans) === plain && ans.length <= comprLZEncode(plain).length;
+      return  comprLZEncode(plain);
     },
   },
   {
@@ -1360,10 +1443,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       ].join(" ");
     },
     difficulty: 1,
-    gen: () => {},
+    gen: () => { },
     name: "Encryption I: Caesar Cipher",
     numTries: 10,
-    solver: (_data: unknown, ans: string): boolean => {
+    solver: (_data: unknown, ans: string): string => {
       if (!Array.isArray(_data)) throw new Error("data should be array of string");
       const data = _data as [string, number];
       // data = [plaintext, shift value]
@@ -1371,7 +1454,7 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       const cipher = [...data[0]]
         .map((a) => (a === " " ? a : String.fromCharCode(((a.charCodeAt(0) - 65 - data[1] + 26) % 26) + 65)))
         .join("");
-      return cipher === ans;
+      return cipher;
     },
   },
   {
@@ -1405,10 +1488,10 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
       ].join(" ");
     },
     difficulty: 2,
-    gen: () => {},
+    gen: () => { },
     name: "Encryption II: Vigenère Cipher",
     numTries: 10,
-    solver: (_data: unknown, ans: string): boolean => {
+    solver: (_data: unknown, ans: string): string => {
       if (!Array.isArray(_data)) throw new Error("data should be array of string");
       const data = _data as [string, string];
       // data = [plaintext, keyword]
@@ -1420,7 +1503,7 @@ export const codingContractTypesMetadata: ICodingContractTypeMetadata[] = [
             : String.fromCharCode(((a.charCodeAt(0) - 2 * 65 + data[1].charCodeAt(i % data[1].length)) % 26) + 65);
         })
         .join("");
-      return cipher === ans;
+      return cipher;
     },
   },
 ];

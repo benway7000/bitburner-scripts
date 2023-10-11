@@ -37,9 +37,9 @@ let instance: ReturnType<typeof makeConfig<XpConfig>>;
  * and allows a once-only initialisation
  * (additional changes require the setValue accessor)
  */
-const getInstance = (ns:NS, initial: XpConfig = defaultConfig) => {
+const getInstance = (initial: XpConfig = defaultConfig) => {
   if (!instance) {
-    instance = makeConfig<XpConfig>(ns, CONFIG_FILE, initial);
+    instance = makeConfig<XpConfig>(CONFIG_FILE, initial);
     return instance;
   }
   return instance;
@@ -51,7 +51,7 @@ export default getInstance;
 export async function main(ns: NS) {
   // ns.disableLog("ALL")
 
-  instance = getInstance(ns)
+  instance = getInstance()
 
   let [cmd = "list"] = ns.args;
 
@@ -59,10 +59,10 @@ export async function main(ns: NS) {
     ns.tprint(instance.getCurrentConfig())
   } else if (cmd === "write") {
     ns.tprint(`Writing config to ${instance.getConfigFile()}`)
-    instance.writeConfigToFile()
+    instance.writeConfigToFile(ns)
   } else if (cmd === "reload") {
     ns.tprint(`Reloading config from ${instance.getConfigFile()}`)
-    instance.loadConfigFromFile()
+    instance.loadConfigFromFile(ns)
     ns.tprint(`New configuration is ${instance.getCurrentConfig()}`)
   }
 }

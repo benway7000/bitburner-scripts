@@ -152,10 +152,18 @@ export async function main(ns) {
   // =========================================
   // ns.tprint(`HasSingularity: ${HasSingularity(ns)}`)
   // =========================================
-  FracturedJson.InitializeFracturedJson()
-  ns.tprint(FracturedJson.formatter.Serialize(ns.getPlayer()))
+  // FracturedJson.InitializeFracturedJson()
+  // ns.tprint(FracturedJson.formatter.Serialize(ns.getPlayer()))
 
   // =========================================
+  let homeRam = ns.getServerMaxRam("home")
+  ns.tprint(`home RAM ${homeRam}`)
+
+  if (homeRam < 64)  {   // less than 64, run low-ram
+    ns.tprint(`Low Home RAM (${ns.formatRam(homeRam)}), starting low-ram version`)
+    // ns.spawn("/scripts/autostart/autostart_lowram.js")
+  }
+
   // =========================================
   // =========================================
   // =========================================

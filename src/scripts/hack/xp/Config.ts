@@ -1,5 +1,4 @@
 import { NS } from '@ns';
-import { InitializeNS, ns } from "scripts/lib/NS";
 
 
 const DEFAULT_TARGET = "joesguns"
@@ -35,17 +34,17 @@ export class Config {
     Object.assign(this, config)
   }
 
-  static loadConfigFromFile():boolean {
-    if (ns.ns.fileExists(CONFIG_FILE)) {
-      let fileConfig:Partial<XpConfig> = JSON.parse(ns.ns.read(CONFIG_FILE))
+  static loadConfigFromFile(ns:NS):boolean {
+    if (ns.fileExists(CONFIG_FILE)) {
+      let fileConfig:Partial<XpConfig> = JSON.parse(ns.read(CONFIG_FILE))
       this.loadConfig(fileConfig)
       return true
     }
     return false
   }
 
-  static writeConfigToFile() {
-    ns.ns.write(CONFIG_FILE, JSON.stringify(Object.assign({}, this), null, 2), "w")
+  static writeConfigToFile(ns:NS) {
+    ns.write(CONFIG_FILE, JSON.stringify(Object.assign({}, this), null, 2), "w")
   }
 
   static {
@@ -58,18 +57,16 @@ export class Config {
 export async function main(ns: NS) {
   ns.disableLog("ALL")
 
-  InitializeNS(ns)
-
   let [cmd = "list"] = ns.args;
 
   if (cmd === "list") {
     ns.tprint(Config.getCurrentConfig())
   } else if (cmd === "write") {
     ns.tprint(`Writing config to ${CONFIG_FILE}`)
-    Config.writeConfigToFile()
+    Config.writeConfigToFile(ns)
   } else if (cmd === "reload") {
     ns.tprint(`Reloading config from ${CONFIG_FILE}`)
-    Config.loadConfigFromFile()
+    Config.loadConfigFromFile(ns)
     ns.tprint(`New configuration is ${Config.getCurrentConfig()}`)
   }
 }

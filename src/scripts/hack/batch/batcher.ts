@@ -1,9 +1,8 @@
-import { NS } from '@ns';
-import { InitializeNS, ns } from "scripts/lib/NS";
-import { Config, BATCHER_PORT } from "scripts/hack/batch/Config";
-import { Target, TargetNextStep } from "scripts/hack/batch/Target";
+import { NS } from '@ns'
+import { Config, BATCHER_PORT } from "scripts/hack/batch/Config"
+import { Target, TargetNextStep } from "scripts/hack/batch/Target"
 import { SessionState } from "scripts/hack/batch/SessionState"
-import { GetTopHackServers } from "scripts/lib/metrics-simple";
+import { GetTopHackServers } from "scripts/lib/metrics-simple"
 
 const SCRIPT_NAME_PREFIX = "batcher"
 const SCRIPT_PATH = "/scripts/hack/batch/" + SCRIPT_NAME_PREFIX
@@ -40,61 +39,60 @@ const SCRIPT_PATH = "/scripts/hack/batch/" + SCRIPT_NAME_PREFIX
 export async function main(ns: NS) {
   ns.disableLog("ALL")
 
-  InitializeNS(ns)
   SessionState.clearSessionState()
 
   // This script calls 1-liner worker scripts, the following commands create those scripts on the current host
-  await CreateScript("hack")
-  await CreateScript("grow")
-  await CreateScript("weaken")
+  await CreateScript(ns, "hack")
+  await CreateScript(ns, "grow")
+  await CreateScript(ns, "weaken")
 
   // Open the tail window when the script starts
-  // ns.tail();
-  await MainLoop()
+  // ns.tail()
+  await MainLoop(ns)
 }
 
-async function MainLoop() {
+async function MainLoop(ns:NS) {
   while (true) {
     // CheckForConfigCommand()
-    let topTargetHostname = GetTopTargetHostname()
+    let topTargetHostname = Config.getTargetOverride() || GetTopTargetHostname(ns)
     let target = SessionState.getTargetByHostname(topTargetHostname) ?? new Target(topTargetHostname)
 
-    let targetNextStep:TargetNextStep = target.getNextStep()
-    // ns.ns.print(`MainLoop: next step on ${target.hostname} is ${JSON.stringify(targetNextStep, null, 2)}`)
+    let targetNextStep:TargetNextStep = target.getNextStep(ns)
+    // ns.print(`MainLoop: next step on ${target.hostname} is ${JSON.stringify(targetNextStep, null, 2)}`)
     switch (targetNextStep.state) {
       case 'prep_ready':
         // fall through
       case 'hack_ready':
         // batch is ready to run
-        ns.ns.print(`MainLoop: running a batch: target: ${target.hostname} #${target.onDeckBatch?.batchNumber} type:${target.onDeckBatch?.batchType}. total batches on target: ${target.getRunningBatchCount()}`)
-        target.runOnDeckBatch()
+        ns.print(`MainLoop: T:${target.hostname} #${target.onDeckBatch?.batchNumber} type:${target.onDeckBatch?.batchType}. #tot_batch: ${target.getRunningBatchCount()} ram:${target.onDeckBatch?.ramStats?.totalRamUsage}`)
+        target.runOnDeckBatch(ns)
         break
       case 'prep_running':
       case 'hack_running':  // TODO target is full of hacking - can we run another target?
       case 'unknown':
         // fall through, do nothing for these cases        
     }
-    WriteHackStatus()
-    await ns.ns.asleep(Config.loopDelay)
+    WriteHackStatus(ns)
+    await ns.asleep(Config.loopDelay)
   }
 }
 
 // function CheckForConfigCommand() {
-//   while (ns.ns.peek(BATCHER_PORT)) {
-//     let data = JSON.parse(ns.ns.readPort(BATCHER_PORT))
+//   while (ns.peek(BATCHER_PORT)) {
+//     let data = JSON.parse(ns.readPort(BATCHER_PORT))
 //   }
 // }
 
-function WriteHackStatus() {
-  ns.ns.write("/data/hack.txt", JSON.stringify(SessionState.getJSON(), null, 2), "w")
+function WriteHackStatus(ns:NS) {
+  ns.write("/data/hack.txt", JSON.stringify(SessionState.getJSON(), null, 2), "w")
 }
 
-function GetTopTargetHostname():string {
-  return GetTopHackServers(ns.ns, 1)[0].name
+function GetTopTargetHostname(ns:NS):string {
+  return GetTopHackServers(ns, 1)[0].name
 }
 
-async function CreateScript(command:string) {
-  ns.ns.write(
+async function CreateScript(ns:NS, command:string) {
+  ns.write(
     Config.scriptPrefix + command + ".js",
     "export async function main(ns) { await ns.asleep(ns.args[0]); await ns." + command + "(ns.args[1]) }",
     "w"

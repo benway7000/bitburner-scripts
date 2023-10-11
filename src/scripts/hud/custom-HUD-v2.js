@@ -98,7 +98,7 @@ export async function main(ns) {
             // }
 
             // var scriptIncome = ns.formatNumber(cumulative, 2); // $/sec
-            var scriptIncome = ns.formatNumber(ns.getTotalScriptIncome()[0], 2); // $/sec
+            var scriptIncome = ns.formatNumber(ns.getTotalScriptIncome()[1], 2); // $/sec
             var scriptXP = ns.formatNumber(ns.getTotalScriptExpGain(), 2); // xp/sec
 
             // End paramaters, begin CSS: 

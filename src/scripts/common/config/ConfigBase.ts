@@ -7,8 +7,7 @@ import { NS } from '@ns';
  *
  * Note: Object.freeze() not required due to type narrowing!
  */
-export const makeConfig = <T extends Object>(ns: NS, configFile: string, initial: T) => {
-  let _ns = ns
+export const makeConfig = <T extends Object>(configFile: string, initial: T) => {
   let _configFile = configFile
 
   /** Closure of the singleton's value to keep it private */
@@ -31,24 +30,22 @@ export const makeConfig = <T extends Object>(ns: NS, configFile: string, initial
       Object.assign(_config, config)
     },
   
-    loadConfigFromFile():boolean {
-      _ns.tprint(`loadConfigFromFile`)
-      return true
-      // try {
-      //   _ns.tprint(`loadConfigFromFile: file ${_configFile} exists`)
-      //   let fileConfig:Partial<T> = JSON.parse(_ns.read(_configFile))
-      //   _ns.tprint(`loadConfigFromFile: file ${_configFile} loaded`)
-      //   this.loadConfig(fileConfig)
-      //   _ns.tprint(`loadConfigFromFile: config loaded`)
-      //   return true
-      // } catch (e) {
-      //   _ns.tprint(`loadConfigFromFile: return false`)
-      //   return false  
-      // }
+    loadConfigFromFile(ns:NS):boolean {
+      try {
+        ns.tprint(`loadConfigFromFile: file ${_configFile} exists`)
+        let fileConfig:Partial<T> = JSON.parse(ns.read(_configFile))
+        ns.tprint(`loadConfigFromFile: file ${_configFile} loaded`)
+        this.loadConfig(fileConfig)
+        ns.tprint(`loadConfigFromFile: config loaded`)
+        return true
+      } catch (e) {
+        ns.tprint(`loadConfigFromFile: return false`)
+        return false  
+      }
     },
   
-    writeConfigToFile() {
-      _ns.write(_configFile, JSON.stringify(Object.assign({}, _config), null, 2), "w")
+    writeConfigToFile(ns:NS) {
+      ns.write(_configFile, JSON.stringify(Object.assign({}, _config), null, 2), "w")
     },
   
     // static {
