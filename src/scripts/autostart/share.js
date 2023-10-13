@@ -14,10 +14,11 @@ export async function main(ns) {
 
 	if (ns.args.includes('auto')) {
 		const ram = new MemoryMap(ns, true);
-		if (ram.total < 5000){
-            ns.print("Not enough RAM to share: " + ram.total + " / 5000")
+		if (ram.total < 5000) {
+			ns.print("Not enough RAM to share: " + ram.total + " / 5000")
 			return;
-        }
+		}
+		else pct = 0.05
 		// else if (ram.total < 5000)
 		// 	pct = 0.15;
 		// else if (ram.total < 10000)
@@ -27,17 +28,17 @@ export async function main(ns) {
 		// else if (ram.total < 25000)
 		// 	pct = 0.30;
 		// else
-		// 	pct = 0.35
-		else if (ram.total < 5000)
-			pct = 0.1
-		else if (ram.total < 10000)
-			pct = 0.12
-		else if (ram.total < 15000)
-			pct = 0.14
-		else if (ram.total < 25000)
-			pct = 0.16
-		else
-			pct = 0.18
+		// // 	pct = 0.35
+		// else if (ram.total < 5000)
+		// 	pct = 0.1
+		// else if (ram.total < 10000)
+		// 	pct = 0.12
+		// else if (ram.total < 15000)
+		// 	pct = 0.14
+		// else if (ram.total < 25000)
+		// 	pct = 0.16
+		// else
+		// 	pct = 0.18
 	}
 
 	if (ns.args.includes('stop')) {
@@ -54,8 +55,8 @@ export async function main(ns) {
 		return;
 	}
 
-    await AdjustUsage(ns, pct);
-    ns.print('Current share power: ' + ns.getSharePower());
+	await AdjustUsage(ns, pct);
+	ns.print('Current share power: ' + ns.getSharePower());
 
 	for (; ;) {
 		ns.print('');

@@ -137,7 +137,7 @@ export async function main(ns) {
   // xp is after hack for low-ram situations - TODO something better
   // run xp on joesguns
 
-  RunHomeSingletonScript(ns, "/scripts/hack/xp/xp.js", 1, ["auto"])
+  RunHomeSingletonScript(ns, "/scripts/hack/xp/xp.js", 1, [0.05])
 
 
   ns.print("")

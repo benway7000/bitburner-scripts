@@ -4,6 +4,7 @@ import { Target } from "scripts/hack/batch/Target";
 import { SessionState } from "scripts/hack/batch/SessionState"
 import { WaitPids, FormatTime } from "scripts/lib/utils"
 import { RunScript, MemoryMap } from "scripts/lib/ram"
+import { TokenGenerator } from '/scripts/fracturedjson/TokenGenerator';
 
 export const BATCH_STATES = {
   PREP: "prep",
@@ -70,13 +71,13 @@ export class Batch {
 
     let ram = new MemoryMap(ns)
     do {
-      this.CalcBatch(ns)
+      this.CalcBatch(ns, ram)
       if (this.batchType === "prep") break // don't scale prep batches
       if (ram.available >= this.ramStats.totalRamUsage) break // we can run it, break
-      if (this.hackPct < 0.05) break // at least do 1% even if not enough ram
+      if (this.hackPct <= 0.0001) break // at least do .01% even if not enough ram
 
       // reduce hack pct, then redo calc
-      this.hackPct = Math.max(this.hackPct - 0.05, 0.01)
+      this.hackPct = Math.max(this.hackPct / 2, 0.0001)
     } while (ram.available < this.ramStats.totalRamUsage)
     if (this.hackPct != Config.defaultHackPct) ns.print(`Batch re-calculated with hackPct ${this.hackPct}`)
   }
@@ -98,7 +99,7 @@ export class Batch {
     }
   }
 
-  CalcBatch(ns:NS) {
+  CalcBatch(ns:NS, ram: MemoryMap) {
     // HWGW. assume server is prepped (max money, sec-minSec = 0)
     //                    |= hack ====================|
     // |=weaken 1======================================|
@@ -181,6 +182,19 @@ export class Batch {
     let growRamUsage = scriptRamUsage.grow * this.growAction.threads
     let weaken2RamUsage = scriptRamUsage.weaken * this.weaken2Action.threads
     let totalRamUsage = hackRamUsage + weaken1RamUsage + growRamUsage + weaken2RamUsage
+
+    // scale prep batches - there's only W2 and Grow
+    // TODO: FALSE, there could be W1 if server has security > minSec
+    // with low-ram, it's possible that only W2 runs and we never grow
+    if (this.batchType === "prep" && totalRamUsage > ram.available) {
+      let scale_factor = Math.max(ram.available - ram.HomeBlock().reserved, 32) / totalRamUsage
+      this.weaken2Action.threads = Math.max(Math.floor(this.weaken2Action.threads*scale_factor), 1)
+      this.growAction.threads = Math.max(Math.floor(this.growAction.threads*scale_factor), 1)
+      ns.print(`Scaled prep batch by factor of ${scale_factor}`)
+      weaken2RamUsage = scriptRamUsage.weaken * this.weaken2Action.threads
+      growRamUsage = scriptRamUsage.grow * this.growAction.threads
+      totalRamUsage = hackRamUsage + weaken1RamUsage + growRamUsage + weaken2RamUsage
+    }
 
     this.ramStats = {
       totalRamUsage, hackRamUsage, weaken1RamUsage, growRamUsage, weaken2RamUsage

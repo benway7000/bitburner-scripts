@@ -47,7 +47,7 @@ export async function main(ns) {
   // for low ram, run the other script
   // run again in 10s
   let homeRam = ns.getServerMaxRam("home")
-  if (homeRam < 64)  {   // less than 64, run low-ram
+  if (homeRam < 2048)  {   // less than 2 TB, run low-ram
     ns.tprint(`Low Home RAM (${ns.formatRam(homeRam)}), starting low-ram version`)
     ns.spawn("/scripts/autostart/autostart_lowram.js")
   }
@@ -69,6 +69,9 @@ export async function main(ns) {
     let sitrep = GetSitRep(ns)
     let karma = sitrep.karma
     let homeRamTotal = sitrep.ram.home
+
+    // factions
+    await TryRunScript(ns, "/scripts/autostart/factions.js", [])
 
     // share if we have some ram
     if (homeRamTotal > 1024) {
@@ -93,6 +96,7 @@ export async function main(ns) {
 
     // contracts
     await TryRunScript(ns, "/scripts/contracts/SolveContract.js", [])
+
 
     // if (sitrep.servers.some(s => s.contracts.length > 0)) {
     // 	// Solve contracts

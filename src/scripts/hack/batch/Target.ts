@@ -27,7 +27,7 @@ export class Target {
     let money = ns.getServerMoneyAvailable(this.hostname)
     if (money <= 0) money = 1 // division by zero safety
     const maxMoney = ns.getServerMaxMoney(this.hostname)
-    if ((maxMoney * Config.maxMoneyDriftPct) > money) return false
+    if ((maxMoney * (1 - Config.maxMoneyDriftPct)) > money) return false
 
     // Security
     const minSec = ns.getServerMinSecurityLevel(this.hostname)
@@ -95,24 +95,17 @@ export class Target {
             return { state: "hack_ready", batch: this.onDeckBatch }
           } else {
             // batch can't be a full batch
-            // allow up to 3 batches of any size, or allow up to 2 less-than-max batches if > 3 batches
             let reducedBatches = this.runningHackBatches.filter(b => b.hackPct < Config.defaultHackPct).length
+            if (this.getRunningBatchCount() == 1 && reducedBatches == 1) {
+              // there's one batch running and it's reduced, this means we probably shouldn't run any more
+              return { state: "hack_running" }
+            }
+            // allow up to 3 batches of any size, or allow up to 2 less-than-max batches if > 3 batches
             if (this.getRunningBatchCount() < 3 || reducedBatches < 2) {
               this.onDeckBatch = testBatch  // create a hackBatch, put it on deck
               return { state: "hack_ready", batch: this.onDeckBatch }
             }
           }
-          // // allow up to 3 batches of any size, or allow up to 2 less-than-max batches if > 3 batches
-          // let reducedBatches = this.runningHackBatches.filter(b => b.hackPct < Config.defaultHackPct).length
-          // if (this.getRunningBatchCount() < 3 || reducedBatches <= 2) {
-          //   this.onDeckBatch = new HackBatch(ns, this.hostname, this.batchNumber++)  // create a hackBatch, put it on deck
-          //   return { state: "hack_ready", batch: this.onDeckBatch }
-          // }
-          // if (!(this.getRunningBatchCount() > 1 && this.runningHackBatches.slice(-1)[0].hackPct < Config.defaultHackPct)) {
-          //   // can add another batch if last batch was max hackPct
-          //   this.onDeckBatch = new HackBatch(ns, this.hostname, this.batchNumber++)  // create a hackBatch, put it on deck
-          //   return { state: "hack_ready", batch: this.onDeckBatch }
-          // }
         }
         return { state: "hack_running" }
       }

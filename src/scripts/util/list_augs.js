@@ -6,8 +6,11 @@ export async function main(ns) {
     const [type = "all"] = ns.args
 
     // getAugmentationStats(name: string): Multipliers; 
-    let owned_augs = ns.singularity.getOwnedAugmentations(true)
-    GetAllAugs(ns).filter(aug=>aug.type === type).filter(aug=>!owned_augs.includes(aug.name)).forEach(aug => ns.tprint(`${aug.name}: ${ns.singularity.getAugmentationFactions(aug.name)}`))
+    // let owned_augs = ns.singularity.getOwnedAugmentations(true)
+    // GetAllAugs(ns).filter(aug => aug.type === type)
+    //     .filter(aug => !owned_augs.includes(aug.name))
+    //     .sort((a, b) => b.basePrice - a.basePrice)
+    //     .forEach(aug => ns.tprintf(` $${ns.formatNumber(aug.basePrice)}:${aug.name}:${ns.singularity.getAugmentationFactions(aug.name)}`))
     // for (let aug of all_augs) {
     //     if (type === "all" || aug.type === type)
     //         ns.tprint(`${JSON.stringify(aug, null, 2)}`)
@@ -15,6 +18,20 @@ export async function main(ns) {
     //     // break
     // }
     // ListFactionsForType(ns, type)
+    ListAugsToPurchase(ns, type)
+}
+
+function ListAugsToPurchase(ns, type) {
+    let owned_augs = ns.singularity.getOwnedAugmentations(true)
+    let augs = GetAllAugs(ns).filter(aug => aug.type === type || type === "all")
+        .filter(aug => !owned_augs.includes(aug.name))
+        .sort((a, b) => b.basePrice - a.basePrice)
+    for (let aug of augs) {
+        let factions_can_buy_from = ns.singularity.getAugmentationFactions(aug.name).filter(fac => ns.singularity.getFactionRep(fac) >= aug.repreq)
+        if (factions_can_buy_from.length) {
+            ns.tprintf(`$${ns.formatNumber(aug.basePrice)}\t:\t${aug.name}\t:\t${factions_can_buy_from}`)        
+        }
+    }
 }
 
 function ListFactionsForType(ns, type) {
@@ -25,7 +42,7 @@ function ListFactionsForType(ns, type) {
             break
             ns.tprint(`${aug.name}: ${ns.singularity.getAugmentationFactions(aug.name)}`)
         }
-    }   
+    }
 }
 
 function GetAllAugs(ns) {

@@ -37,7 +37,7 @@ export async function main(ns) {
     { header: " HackReq", width: 9 },
     { header: " Prepped", width: 9 },
     { header: " Weight", width: 9 },
-    { header: " Hacking", width: 17 },
+    { header: " Hacking", width: 24 },
   ]
 
   if (HasFormulas(ns)) {
