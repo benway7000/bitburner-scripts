@@ -1,0 +1,5 @@
+So, this is what I just used to break BN3.1-BN3.3.  I'm not quite sure it'll just run on it's own for your first time in BN3.1, and it's certainly far from optimal, but it is a path to break BN3.  It takes at least 12-24 hours to run until it goes public, and you're earning lots of money per second and can bribe all of the factions to break the bitnode.  Thanks to @yichizhng, @Caldwell, and @DarkTechnomancer for all of the code and inspiration.
+
+To actually run the script, you should start a corp from city hall for the zero-dollar option, immediately take all offers, go public issuing 10% of your shares, then sell all but one share.  That should get you enough money to upgrade your home computer's RAM to be able to run the script.  You will have to wait an hour before you can sell your CEO position, then run the script.
+
+Hopefully, this helps folks kind of understand what to do with corps.  If you let it run long enough, it should get you into 1e95+ money, like folks are talking about here.

@@ -148,7 +148,9 @@ export async function main(ns) {
     }
 
     // purchase servers, after programs are bought
-    if (sitrep.portCrackers >= 5 && ns.getPurchasedServers().length < ns.getPurchasedServerLimit()) {
+    if (sitrep.portCrackers >= 5
+      && ns.getPurchasedServers().length < ns.getPurchasedServerLimit()
+      && homeRamTotal > 1024) {
       await TryRunScript(ns, "/scripts/pserv/purchase-server.js")
     }
 
