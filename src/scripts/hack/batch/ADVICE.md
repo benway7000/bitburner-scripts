@@ -113,6 +113,23 @@ const w2Threads = Math.ceil((growThreads * 0.002 * 2) / ns.weakenAnalyze(1));
  
 thats my thread calc without formulas when the server is prepped
 ============================================================
+ElJay
+ — 
+10/02/2023 1:32 AM
+I mean ultimately the goal is the highest money/second. everything else is just a means to that end.
+usually that means maximizing ram utilization while also preferring lower thread counts due to the exponential increase grow threads experience.
+plus or minus some fractional thread stuff
+============================================================
+Quick question, what would the ideal thread count per batch contain? Highest efficency in relation to earnings and ram utilization?
+
+xsinx
+ — 
+10/02/2023 2:35 AM
+The answer is very dependent on how much ram you have. Your main currency when batching is RAM and while weaken is directly porportional to grow or hack threads, the grow threads grow logarithmically vs hack, so the bigger the hack, the bigger the impact on ram. For instance, the difference between hacking 99 and 100% of the money in one swipe can easily be 2-3x more ram usage. You want to aim to fill your ram 100%, it might mean batching against multiple targets.. That quick and abrupt raise in grow ram requirement at higher percents means it quickly becomes more lucrative to hack 2 servers for 90% than a single one for 100%, and you might even have enough ram left over to hack 2-3 more servers, etc...
+The way I approached it in my codebase is I've designed a Metrics class that pretty much calculate all possibilities for a server. I haven't pushed it to the multiple server level yet... So basically, I can ask the Metrics class to provide me with all the details about hacking n00dles with 10 hack threads and it will return a blueprint of the batch needed to do this, how many threads of each job I need to lauch, how many I can fit in ram, how much profit this batch will do, how long it takes to execute, etc..
+I can then brute force the results for all hacking thread counts and find out how many threads will give me the best income over the time the batch takes to execute, all while taking into account how many batches I can fit in my current ram
+By running this against all hackable servers, I can find out which of all the servers, if I threw all my ram at it, would provide me with the best possible income rate
+Here's the example output (sitting at 1000 hacking rn with no augs)
 ============================================================
 ============================================================
 ============================================================
